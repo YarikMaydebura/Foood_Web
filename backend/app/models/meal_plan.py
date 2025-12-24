@@ -1,7 +1,16 @@
-from sqlalchemy import BigInteger, ForeignKey, Date, DateTime, Integer, String, Index, UniqueConstraint, func
+from sqlalchemy import BigInteger, ForeignKey, Date, DateTime, Integer, String, Index, UniqueConstraint, func, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import date, datetime
 from app.db.base import Base
+
+
+class MealPlan(Base):
+    """Simple meal plan model for storing weekly meal plans as JSON"""
+    __tablename__ = "meal_plans"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    # Store meal plan data as JSON for flexible structure
+    plan: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
 
 class MealPlanEntry(Base):

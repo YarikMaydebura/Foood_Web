@@ -7,7 +7,8 @@ from app.db.base import Base
 
 from app.models.user import User  # noqa
 from app.models.recipe import Recipe  # noqa
-from app.models.meal_plan import MealPlan  # noqa  ← 追加
+# Import both MealPlan and MealPlanEntry models for table creation
+from app.models.meal_plan import MealPlan, MealPlanEntry  # noqa
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.recipes import router as recipes_router

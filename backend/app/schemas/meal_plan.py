@@ -2,6 +2,14 @@ from pydantic import BaseModel, Field
 from datetime import date, datetime
 
 
+class MealPlanOut(BaseModel):
+    """Simple meal plan output for JSON storage"""
+    plan: dict = Field(default_factory=dict)
+
+    class Config:
+        from_attributes = True
+
+
 class MealPlanEntryCreate(BaseModel):
     week_start_date: date
     day_of_week: int = Field(ge=0, le=6, description="0=Monday, 6=Sunday")

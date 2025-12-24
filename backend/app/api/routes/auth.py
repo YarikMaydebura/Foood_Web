@@ -19,10 +19,12 @@ def signup(body: RegisterIn, db: Session = Depends(get_db)):
     if exists:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    user = User(email=body.email, password_hash=hash_password(body.password))
-    # name を保存したいなら User モデルに name カラム追加（下に書く）
-    if hasattr(user, "name"):
-        user.name = getattr(body, "name", None)  # RegisterInを拡張するならここも
+    # Create User instance with all required fields including name
+    user = User(
+        name=body.name,
+        email=body.email,
+        password_hash=hash_password(body.password)
+    )
 
     db.add(user)
     db.commit()
