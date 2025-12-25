@@ -1,3 +1,7 @@
+/*
+Found the issue with the weird style. Tailwind CSS wasnt imported properly in the main.
+Updated with a proper import to fix the frontend UI.
+*/
 @import "tailwindcss";
 
 :root {

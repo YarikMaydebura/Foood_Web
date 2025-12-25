@@ -395,6 +395,11 @@ const ShoppingListView = ({ shoppingList, setShoppingList }) => {
   );
 };
 
+// RecipeFormModal component updated to match wireframe design
+// Key changes:
+// - Modal backdrop uses inline rgba style for semi-transparent overlay (50% opacity)
+// - Updated input and button styling with orange theme (#FFB84D)
+// - Improved spacing and form layout
 const RecipeFormModal = ({ recipe, onClose, onSave }) => {
   const [title, setTitle] = useState(recipe?.title || "");
   const [image, setImage] = useState(recipe?.image || "");
@@ -426,14 +431,15 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
+    // Semi-transparent backdrop using inline style (rgba) to show greyed-out background
+    <div className="fixed inset-0 flex items-center justify-center p-4 z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="p-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">
+            <h2 className="text-2xl font-bold text-black">
               {recipe ? "Edit Recipe" : "Add New Recipe"}
             </h2>
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -446,29 +452,29 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Recipe Title *</label>
+              <label className="block text-sm font-medium text-black mb-2">Recipe Title *</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Spaghetti Carbonara"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+              <label className="block text-sm font-medium text-black mb-2">Image URL</label>
               <input
                 type="url"
                 value={image}
                 onChange={(e) => setImage(e.target.value)}
                 placeholder="https://example.com/image.jpg"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-black mb-2">
                 Tags (comma-separated)
               </label>
               <input
@@ -476,42 +482,42 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
                 value={tags}
                 onChange={(e) => setTags(e.target.value)}
                 placeholder="e.g., Italian, Dinner, Quick"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-black mb-2">
                 Ingredients (one per line) *
               </label>
               <textarea
                 value={ingredients}
                 onChange={(e) => setIngredients(e.target.value)}
                 rows={6}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white resize-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Instructions *</label>
+              <label className="block text-sm font-medium text-black mb-2">Instructions *</label>
               <textarea
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
                 rows={6}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white resize-none"
               />
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-4 pt-4">
               <button
                 onClick={onClose}
-                className="flex-1 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                className="flex-1 px-6 py-3 border-2 border-gray-300 rounded-lg hover:bg-gray-50 transition font-medium text-gray-700"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition"
+                className="flex-1 bg-[#FFB84D] text-white px-6 py-3 rounded-lg hover:bg-[#FFA830] transition font-medium shadow-sm"
               >
                 {recipe ? "Update Recipe" : "Create Recipe"}
               </button>
@@ -640,6 +646,7 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan }) => {
   );
 };
 
+// Styling changes to make it match the Figma wireframe deisgn
 const AuthScreen = ({ onAuth }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState("");
@@ -887,23 +894,29 @@ const RecipeManager = () => {
 
   if (!user) return <AuthScreen onAuth={setUser} />;
 
+  // Main app layout updated to match wireframe design
+  // Key changes:
+  // - Beige/cream background (#FFF8E8) for warmer look
+  // - Cleaner navigation with orange active state (#FFB84D)
+  // - Gray inactive buttons for better visual hierarchy
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50">
-      <nav className="bg-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+    <div className="min-h-screen bg-[#FFF8E8]">
+      <nav className="bg-white shadow-sm border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Book className="w-8 h-8 text-orange-500" />
-              <h1 className="text-2xl font-bold text-gray-800">Recipe Manager</h1>
+              <h1 className="text-2xl font-bold text-black">Recipe Manager</h1>
             </div>
 
-            <div className="flex items-center gap-6">
+            {/* Navigation buttons with orange active state and gray inactive state */}
+            <div className="flex items-center gap-4">
               <button
                 onClick={() => setCurrentView("recipes")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+                className={`flex items-center gap-2 px-6 py-2 rounded-lg transition font-medium ${
                   currentView === "recipes"
-                    ? "bg-orange-100 text-orange-600"
-                    : "text-gray-600 hover:bg-gray-100"
+                    ? "bg-[#FFB84D] text-white"
+                    : "bg-gray-200 text-gray-600 hover:bg-gray-300"
                 }`}
               >
                 <Book className="w-5 h-5" />
@@ -912,10 +925,10 @@ const RecipeManager = () => {
 
               <button
                 onClick={() => setCurrentView("planner")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+                className={`flex items-center gap-2 px-6 py-2 rounded-lg transition font-medium ${
                   currentView === "planner"
-                    ? "bg-orange-100 text-orange-600"
-                    : "text-gray-600 hover:bg-gray-100"
+                    ? "bg-[#FFB84D] text-white"
+                    : "bg-gray-200 text-gray-600 hover:bg-gray-300"
                 }`}
               >
                 <Calendar className="w-5 h-5" />
@@ -924,10 +937,10 @@ const RecipeManager = () => {
 
               <button
                 onClick={() => setCurrentView("shopping")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+                className={`flex items-center gap-2 px-6 py-2 rounded-lg transition font-medium ${
                   currentView === "shopping"
-                    ? "bg-orange-100 text-orange-600"
-                    : "text-gray-600 hover:bg-gray-100"
+                    ? "bg-[#FFB84D] text-white"
+                    : "bg-gray-200 text-gray-600 hover:bg-gray-300"
                 }`}
               >
                 <ShoppingCart className="w-5 h-5" />
@@ -947,7 +960,7 @@ const RecipeManager = () => {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-8">
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
             {error}
