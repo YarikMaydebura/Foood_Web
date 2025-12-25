@@ -691,15 +691,17 @@ const AuthScreen = ({ onAuth }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <Book className="w-10 h-10 text-orange-500" />
-          <h1 className="text-3xl font-bold text-gray-800">Recipe Manager</h1>
+    <div className="min-h-screen bg-[#F5EFE6] flex items-center justify-center p-4">
+      <div className="bg-[#D5D5D5] rounded-3xl shadow-xl p-12 w-full max-w-md">
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="w-12 h-12 border-4 border-gray-600 rounded-md flex items-center justify-center">
+            <X className="w-8 h-8 text-gray-600" />
+          </div>
+          <h1 className="text-3xl font-bold text-black">Recipe Manager</h1>
         </div>
 
-        <h2 className="text-2xl font-semibold text-gray-700 mb-6 text-center">
-          {isLogin ? "Welcome Back" : "Create Account"}
+        <h2 className="text-2xl font-normal text-black mb-8 text-center">
+          {isLogin ? "Welcome" : "Create Account"}
         </h2>
 
         {error && (
@@ -715,7 +717,7 @@ const AuthScreen = ({ onAuth }) => {
               placeholder="Full Name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-400"
             />
           )}
 
@@ -724,7 +726,7 @@ const AuthScreen = ({ onAuth }) => {
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-400"
           />
 
           <input
@@ -733,28 +735,28 @@ const AuthScreen = ({ onAuth }) => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-400"
           />
 
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full bg-orange-500 text-white py-3 rounded-lg font-semibold hover:bg-orange-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md"
           >
             {loading ? "Please wait..." : isLogin ? "Sign In" : "Sign Up"}
           </button>
         </div>
 
-        <p className="mt-4 text-center text-gray-600">
+        <p className="mt-6 text-center text-gray-700">
           {isLogin ? "Don't have an account? " : "Already have an account? "}
           <button
             onClick={() => {
               setIsLogin(!isLogin);
               setError("");
             }}
-            className="text-orange-500 font-semibold hover:underline"
+            className="text-orange-500 font-semibold hover:text-orange-600 transition"
           >
-            {isLogin ? "Sign Up" : "Sign In"}
+            {isLogin ? "Sign up" : "Sign in"}
           </button>
         </p>
       </div>
