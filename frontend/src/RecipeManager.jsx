@@ -15,6 +15,15 @@ import {
 // API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
+// Helper function to get auth headers for Session 2 authentication
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("authToken");
+  return {
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+};
+
 const api = {
   login: async (email, password) => {
     try {
@@ -26,6 +35,12 @@ const api = {
 
       const data = await response.json();
       if (!response.ok) return { error: data.detail || "Login failed" };
+
+      // Store auth token for Session 2
+      if (data.access_token) {
+        localStorage.setItem("authToken", data.access_token);
+      }
+
       return data;
     } catch (err) {
       return { error: "Network error" };
@@ -42,6 +57,12 @@ const api = {
 
       const data = await response.json();
       if (!response.ok) return { error: data.detail || "Signup failed" };
+
+      // Store auth token for Session 2
+      if (data.access_token) {
+        localStorage.setItem("authToken", data.access_token);
+      }
+
       return data;
     } catch (err) {
       return { error: "Network error" };
@@ -50,7 +71,9 @@ const api = {
 
   getRecipes: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/recipes`);
+      const response = await fetch(`${API_BASE_URL}/recipes`, {
+        headers: getAuthHeaders(),
+      });
       const data = await response.json();
       if (!response.ok) return { error: data.detail || "Failed to fetch recipes" };
       return data;
@@ -63,7 +86,7 @@ const api = {
     try {
       const response = await fetch(`${API_BASE_URL}/recipes`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(recipe),
       });
 
@@ -79,7 +102,7 @@ const api = {
     try {
       const response = await fetch(`${API_BASE_URL}/recipes/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(recipe),
       });
 
@@ -95,6 +118,7 @@ const api = {
     try {
       const response = await fetch(`${API_BASE_URL}/recipes/${id}`, {
         method: "DELETE",
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -109,7 +133,9 @@ const api = {
 
   getMealPlan: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/meal-plan`);
+      const response = await fetch(`${API_BASE_URL}/meal-plan`, {
+        headers: getAuthHeaders(),
+      });
       const data = await response.json();
       if (!response.ok) return { error: data.detail || "Failed to fetch meal plan" };
       return data;
@@ -122,7 +148,7 @@ const api = {
     try {
       const response = await fetch(`${API_BASE_URL}/meal-plan`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         body: JSON.stringify(plan),
       });
 
@@ -256,8 +282,8 @@ const RecipesView = ({
               key={recipe.id}
               className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition"
             >
-              {recipe.image && (
-                <img src={recipe.image} alt={recipe.title} className="w-full h-48 object-cover" />
+              {recipe.image_url && (
+                <img src={recipe.image_url} alt={recipe.title} className="w-full h-48 object-cover" />
               )}
               <div className="p-4">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">{recipe.title}</h3>
@@ -268,7 +294,7 @@ const RecipesView = ({
                         key={index}
                         className="px-2 py-1 bg-orange-100 text-orange-600 text-xs rounded-full"
                       >
-                        {tag}
+                        {typeof tag === 'string' ? tag : tag.name}
                       </span>
                     ))}
                   </div>
@@ -305,8 +331,8 @@ const ShoppingListView = ({ shoppingList, setShoppingList }) => {
     );
   };
 
-  const uncheckedCount = shoppingList.filter((item) => !item.checked).length;
-  const totalCount = shoppingList.length;
+  const uncheckedCount = shoppingList.filter((item) => !item.isHeader && !item.checked).length;
+  const totalCount = shoppingList.filter((item) => !item.isHeader).length;
 
   return (
     <div>
@@ -330,33 +356,54 @@ const ShoppingListView = ({ shoppingList, setShoppingList }) => {
           <>
             <div className="space-y-2">
               {shoppingList.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition group"
-                >
-                  <input
-                    type="checkbox"
-                    checked={item.checked}
-                    onChange={() => toggleItem(index)}
-                    className="w-5 h-5 text-orange-500 rounded focus:ring-2 focus:ring-orange-500 cursor-pointer"
-                  />
-                  <span
-                    className={`flex-1 text-lg ${
-                      item.checked ? "line-through text-gray-400" : "text-gray-800"
-                    }`}
+                item.isHeader ? (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 pt-6 pb-2 border-b-2 border-orange-200 mt-4 first:mt-0 first:pt-0"
                   >
-                    {item.item}
-                  </span>
-                  {item.count > 1 && (
+                    <h3 className="text-xl font-bold text-orange-600 uppercase tracking-wide">
+                      {item.item}
+                    </h3>
+                  </div>
+                ) : (
+                  <div
+                    key={index}
+                    className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition group"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={item.checked}
+                      onChange={() => toggleItem(index)}
+                      className="w-5 h-5 text-orange-500 rounded focus:ring-2 focus:ring-orange-500 cursor-pointer"
+                    />
                     <span
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        item.checked ? "bg-gray-100 text-gray-400" : "bg-orange-100 text-orange-600"
+                      className={`flex-1 text-lg ${
+                        item.checked ? "line-through text-gray-400" : "text-gray-800"
                       }`}
                     >
-                      ×{item.count}
+                      {item.quantity && item.unit && (
+                        <span className="text-gray-600 font-normal">
+                          {item.quantity} {item.unit}{' '}
+                        </span>
+                      )}
+                      {item.quantity && !item.unit && item.quantity !== 1 && (
+                        <span className="text-gray-600 font-normal">
+                          {item.quantity}{' '}
+                        </span>
+                      )}
+                      <span className="font-semibold">{item.ingredient}</span>
                     </span>
-                  )}
-                </div>
+                    {item.count > 1 && (
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          item.checked ? "bg-gray-100 text-gray-400" : "bg-orange-100 text-orange-600"
+                        }`}
+                      >
+                        ×{item.count}
+                      </span>
+                    )}
+                  </div>
+                )
               ))}
             </div>
 
@@ -395,18 +442,40 @@ const ShoppingListView = ({ shoppingList, setShoppingList }) => {
   );
 };
 
-// RecipeFormModal component updated to match wireframe design
-// Key changes:
-// - Modal backdrop uses inline rgba style for semi-transparent overlay (50% opacity)
-// - Updated input and button styling with orange theme (#FFB84D)
-// - Improved spacing and form layout
+// Updated to match wireframe design
+// Set opacity to 50%
+// Updated input and button styling
+// Improved spacing and form layout
 const RecipeFormModal = ({ recipe, onClose, onSave }) => {
+  // Debug: Log recipe data to console
+  console.log("Recipe data:", recipe);
+  console.log("Recipe ingredients:", recipe?.recipe_ingredients);
+  console.log("Recipe tags:", recipe?.tags);
+
   const [title, setTitle] = useState(recipe?.title || "");
-  const [image, setImage] = useState(recipe?.image || "");
-  const [tags, setTags] = useState(recipe?.tags?.join(", ") || "");
-  const [ingredients, setIngredients] = useState(recipe?.ingredients?.join("\n") || "");
+  const [image, setImage] = useState(recipe?.image_url || "");
+  const [imageFile, setImageFile] = useState(null);
+  const [tags, setTags] = useState(
+    recipe?.tags?.map(t => typeof t === 'string' ? t : t.name).join(", ") || ""
+  );
+  const [ingredients, setIngredients] = useState(
+    recipe?.recipe_ingredients?.map(ri => ri.ingredient?.name || ri.ingredient_name).join("\n") || ""
+  );
   const [instructions, setInstructions] = useState(recipe?.instructions || "");
   const [error, setError] = useState("");
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Convert image to base64 data URL
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImage(reader.result);
+        setImageFile(file);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSave = () => {
     setError("");
@@ -417,7 +486,8 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
 
     onSave({
       title: title.trim(),
-      image: image.trim(),
+      image_url: image.trim(),
+      description: "",
       tags: tags
         .split(",")
         .map((t) => t.trim())
@@ -425,7 +495,14 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
       ingredients: ingredients
         .split("\n")
         .map((i) => i.trim())
-        .filter(Boolean),
+        .filter(Boolean)
+        .map((ingredientText) => ({
+          ingredient_name: ingredientText,
+          quantity: null,
+          unit: null,
+          note: null,
+        })),
+      tag_ids: [],
       instructions: instructions.trim(),
     });
   };
@@ -463,14 +540,34 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-black mb-2">Image URL</label>
-              <input
-                type="url"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-                placeholder="https://example.com/image.jpg"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
-              />
+              <label className="block text-sm font-medium text-black mb-2">Image</label>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Upload Image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200 cursor-pointer"
+                  />
+                </div>
+                <div className="text-center text-sm text-gray-500">OR</div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Image URL</label>
+                  <input
+                    type="url"
+                    value={image}
+                    onChange={(e) => setImage(e.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                  />
+                </div>
+                {image && (
+                  <div className="mt-2">
+                    <img src={image} alt="Preview" className="w-32 h-32 object-cover rounded-lg border-2 border-gray-200" />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
@@ -531,7 +628,7 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
 
 const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan }) => {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-  const meals = ["Breakfast", "Lunch", "Dinner"];
+  const meals = ["Breakfast", "Lunch", "Dinner", "Dessert/Snacking"];
 
   const addRecipeToMeal = (day, meal, recipeId) => {
     const newPlan = {
@@ -555,9 +652,78 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan }) => {
     onSavePlan(newPlan);
   };
 
+  const clearAllMeals = () => {
+    if (window.confirm("Are you sure you want to clear all meals from this week's plan?")) {
+      setMealPlan({});
+      onSavePlan({});
+    }
+  };
+
+  const randomizeMealPlan = () => {
+    const newPlan = {};
+
+    // Helper function to get random recipe with matching tag
+    const getRandomRecipeForMeal = (mealType) => {
+      // Map meal types to tag keywords
+      const tagMapping = {
+        'Breakfast': ['breakfast'],
+        'Lunch': ['lunch'],
+        'Dinner': ['dinner'],
+        'Dessert/Snacking': ['dessert', 'sweet', 'snack']
+      };
+
+      const matchingKeywords = tagMapping[mealType] || [];
+
+      // Filter recipes that have tags matching this meal type
+      const matchingRecipes = recipes.filter(recipe => {
+        if (!recipe.tags || recipe.tags.length === 0) return false;
+        return recipe.tags.some(tag => {
+          const tagName = typeof tag === 'string' ? tag.toLowerCase() : tag.name.toLowerCase();
+          return matchingKeywords.some(keyword => tagName.includes(keyword));
+        });
+      });
+
+      // If no matching recipes, return null
+      if (matchingRecipes.length === 0) return null;
+
+      // Return random recipe from matching ones
+      return matchingRecipes[Math.floor(Math.random() * matchingRecipes.length)].id;
+    };
+
+    // Fill each day and meal slot
+    days.forEach(day => {
+      newPlan[day] = {};
+      meals.forEach(meal => {
+        const recipeId = getRandomRecipeForMeal(meal);
+        if (recipeId) {
+          newPlan[day][meal] = recipeId;
+        }
+      });
+    });
+
+    setMealPlan(newPlan);
+    onSavePlan(newPlan);
+  };
+
   return (
     <div>
-      <h2 className="text-3xl font-bold text-gray-800 mb-6">Weekly Meal Planner</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-3xl font-bold text-gray-800">Weekly Meal Planner</h2>
+        <div className="flex gap-3">
+          <button
+            onClick={randomizeMealPlan}
+            className="flex items-center gap-2 bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 transition shadow-lg"
+          >
+            <span>Randomize</span>
+          </button>
+          <button
+            onClick={clearAllMeals}
+            className="flex items-center gap-2 bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 transition shadow-lg"
+          >
+            <span>Clear All</span>
+          </button>
+        </div>
+      </div>
 
       {recipes.length === 0 ? (
         <div className="bg-white rounded-xl shadow-lg p-12 text-center">
@@ -598,12 +764,12 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan }) => {
                             <p className="text-sm font-medium text-gray-800 pr-6">{recipe.title}</p>
                             {recipe.tags && recipe.tags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
-                                {recipe.tags.slice(0, 2).map((tag, idx) => (
+                                {recipe.tags.map((tag, idx) => (
                                   <span
                                     key={idx}
                                     className="text-xs bg-orange-200 text-orange-700 px-2 py-0.5 rounded"
                                   >
-                                    {tag}
+                                    {typeof tag === 'string' ? tag : tag.name}
                                   </span>
                                 ))}
                               </div>
@@ -646,7 +812,7 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan }) => {
   );
 };
 
-// Styling changes to make it match the Figma wireframe deisgn
+// Styling changes
 const AuthScreen = ({ onAuth }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [name, setName] = useState("");
@@ -818,26 +984,275 @@ const RecipeManager = () => {
   };
 
   const generateShoppingList = () => {
-    const ingredientsCount = {};
+    const ingredientsMap = {};
 
     Object.values(mealPlan).forEach((dayPlan) => {
       Object.values(dayPlan).forEach((recipeId) => {
         const recipe = recipes.find((r) => r.id === recipeId);
-        if (recipe?.ingredients) {
-          recipe.ingredients.forEach((ing) => {
-            ingredientsCount[ing] = (ingredientsCount[ing] || 0) + 1;
+        if (recipe?.recipe_ingredients) {
+          recipe.recipe_ingredients.forEach((ri) => {
+            const fullText = (ri.ingredient?.name || ri.ingredient_name).trim();
+
+            // Skip "to taste" items
+            if (fullText.toLowerCase().match(/^(to\s+taste|salt\s+and\s+pepper\s+to\s+taste)$/i)) {
+              return;
+            }
+
+            // Parse "quantity unit ingredient" format
+            // Improved regex to handle numbers with fractions, decimals, and various units
+            const match = fullText.match(/^([\d.\/]+)?\s*(cups?|tbsps?|tablespoons?|tsps?|teaspoons?|g|kg|oz|lbs?|ml|cloves?|slices?|packets?|heads?)?\s*(.+)$/i);
+
+            if (match) {
+              let [, qtyStr, unit, ingredient] = match;
+
+              // Parse quantity
+              let quantity = 1;
+              if (qtyStr) {
+                qtyStr = qtyStr.trim();
+                if (qtyStr.includes('/')) {
+                  const parts = qtyStr.split('/');
+                  quantity = parseFloat(parts[0]) / parseFloat(parts[1]);
+                } else {
+                  quantity = parseFloat(qtyStr);
+                }
+              }
+
+              // Normalize unit
+              let normalizedUnit = '';
+              if (unit) {
+                unit = unit.toLowerCase().trim();
+                if (unit.match(/^cups?$/i)) normalizedUnit = 'cup';
+                else if (unit.match(/^(tablespoons?|tbsps?)$/i)) normalizedUnit = 'tbsp';
+                else if (unit.match(/^(teaspoons?|tsps?)$/i)) normalizedUnit = 'tsp';
+                else if (unit.match(/^cloves?$/i)) normalizedUnit = 'clove';
+                else if (unit.match(/^slices?$/i)) normalizedUnit = 'slice';
+                else if (unit.match(/^packets?$/i)) normalizedUnit = 'packet';
+                else if (unit.match(/^heads?$/i)) normalizedUnit = 'head';
+                else if (unit.match(/^lbs?$/i)) normalizedUnit = 'lb';
+                else normalizedUnit = unit;
+              }
+
+              // Clean ingredient name and normalize spaces
+              ingredient = ingredient.trim()
+                .replace(/^(fresh|dried|ground|chopped|sliced|diced|minced|crushed)\s+/i, '')
+                .replace(/\s+to\s+taste$/i, '')
+                .replace(/\s*\([^)]*\)/g, '')
+                .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
+                .trim();
+
+              // Normalize to singular form for combining
+              let singularIngredient = ingredient.toLowerCase();
+
+              // Singularize ingredient name for combining similar items
+              if (singularIngredient.endsWith('olives')) {
+                singularIngredient = singularIngredient.slice(0, -1); // olives -> olive
+              } else if (singularIngredient.endsWith('ves')) {
+                singularIngredient = singularIngredient.slice(0, -3) + 'f'; // leaves -> leaf
+              } else if (singularIngredient.endsWith('ies')) {
+                singularIngredient = singularIngredient.slice(0, -3) + 'y'; // berries -> berry
+              } else if (singularIngredient.endsWith('oes')) {
+                singularIngredient = singularIngredient.slice(0, -2); // tomatoes -> tomato
+              } else if (singularIngredient.endsWith('sses')) {
+                // Keep as is (grasses -> grasses)
+              } else if (singularIngredient.endsWith('s') && !singularIngredient.endsWith('ss')) {
+                singularIngredient = singularIngredient.slice(0, -1); // eggs -> egg
+              }
+
+              // Create unique key for combining
+              const key = normalizedUnit ? `${singularIngredient}|||${normalizedUnit}` : singularIngredient;
+
+              if (!ingredientsMap[key]) {
+                ingredientsMap[key] = { ingredient: singularIngredient, unit: normalizedUnit, quantity: 0 };
+              }
+              ingredientsMap[key].quantity += quantity;
+            } else if (fullText.trim()) {
+              // Fallback for unparseable items
+              const lower = fullText.toLowerCase();
+              if (!ingredientsMap[lower]) {
+                ingredientsMap[lower] = { ingredient: lower, unit: '', quantity: 1 };
+              } else {
+                ingredientsMap[lower].quantity += 1;
+              }
+            }
           });
         }
       });
     });
 
-    const list = Object.entries(ingredientsCount).map(([item, count]) => ({
-      item,
-      count,
-      checked: false,
-    }));
+    // Comprehensive ingredient categorization
+    const categories = {
+      'Produce': [
+        // Vegetables
+        'tomato', 'onion', 'garlic', 'lettuce', 'cucumber', 'carrot', 'celery', 'bell pepper', 'pepper',
+        'potato', 'sweet potato', 'broccoli', 'cauliflower', 'cabbage', 'spinach', 'kale', 'arugula',
+        'zucchini', 'squash', 'eggplant', 'mushroom', 'corn', 'pea', 'bean', 'asparagus', 'avocado',
+        'radish', 'beet', 'turnip', 'leek', 'shallot', 'scallion', 'spring onion', 'green onion',
+        'cherry tomato', 'roma tomato', 'red onion', 'white onion', 'yellow onion', 'romaine lettuce',
+        'iceberg lettuce', 'mixed green', 'mixed vegetable', 'kalamata olive', 'olive', 'jalapeño',
+        'chili', 'habanero', 'serrano', 'poblano', 'green bean', 'snap pea', 'edamame',
+        // Fruits
+        'banana', 'apple', 'orange', 'lemon', 'lime', 'strawberry', 'blueberry', 'raspberry',
+        'blackberry', 'grape', 'watermelon', 'melon', 'cantaloupe', 'pineapple', 'mango', 'papaya',
+        'peach', 'plum', 'pear', 'cherry', 'kiwi', 'coconut', 'pomegranate', 'fig', 'date',
+        // Herbs
+        'cilantro', 'parsley', 'basil', 'mint', 'oregano', 'thyme', 'rosemary', 'sage', 'dill',
+        'chive', 'tarragon', 'bay leaf', 'coriander leaf', 'ginger', 'lemongrass', 'bay'
+      ],
+      'Proteins': [
+        // Poultry
+        'chicken', 'chicken breast', 'chicken thigh', 'chicken wing', 'chicken leg', 'turkey',
+        'duck', 'quail',
+        // Meat
+        'beef', 'pork', 'lamb', 'veal', 'bacon', 'sausage', 'ham', 'ground beef', 'ground pork',
+        'steak', 'ribeye', 'sirloin', 'brisket', 'short rib', 'pork chop', 'pork belly',
+        // Seafood
+        'fish', 'salmon', 'tuna', 'cod', 'tilapia', 'halibut', 'trout', 'sardine', 'anchovy',
+        'anchovy fillet', 'shrimp', 'prawn', 'lobster', 'crab', 'scallop', 'mussel', 'clam', 'oyster',
+        'squid', 'octopus', 'calamari',
+        // Eggs & Plant-Based
+        'egg', 'tofu', 'tempeh', 'seitan', 'edamame'
+      ],
+      'Dairy': [
+        'milk', 'whole milk', 'skim milk', '2% milk', 'almond milk', 'soy milk', 'oat milk',
+        'coconut milk', 'heavy cream', 'whipping cream', 'half and half', 'cream',
+        'butter', 'unsalted butter', 'salted butter', 'ghee', 'margarine', 'melted butter',
+        'cheese', 'cheddar cheese', 'mozzarella', 'parmesan cheese', 'feta cheese', 'goat cheese',
+        'cream cheese', 'ricotta', 'cottage cheese', 'swiss cheese', 'provolone', 'brie',
+        'blue cheese', 'gorgonzola', 'gouda', 'monterey jack', 'pepper jack', 'shredded cheese',
+        'yogurt', 'greek yogurt', 'sour cream', 'crème fraîche', 'mascarpone'
+      ],
+      'Pantry Staples': [
+        // Grains & Flour
+        'flour', 'all-purpose flour', 'bread flour', 'cake flour', 'whole wheat flour', 'almond flour',
+        'coconut flour', 'cornmeal', 'cornstarch', 'rice', 'white rice', 'brown rice', 'basmati rice',
+        'jasmine rice', 'wild rice', 'arborio rice', 'quinoa', 'couscous', 'bulgur', 'farro', 'barley',
+        'oat', 'rolled oat', 'steel cut oat', 'oatmeal',
+        // Pasta & Noodles
+        'pasta', 'spaghetti', 'penne', 'rigatoni', 'macaroni', 'linguine', 'fettuccine', 'lasagna',
+        'angel hair', 'ravioli', 'tortellini', 'noodle', 'ramen', 'udon', 'soba', 'rice noodle',
+        'vermicelli',
+        // Beans & Legumes
+        'black bean', 'kidney bean', 'pinto bean', 'chickpea', 'garbanzo bean', 'lentil',
+        'split pea', 'navy bean', 'cannellini bean', 'lima bean',
+        // Sugar & Sweeteners
+        'sugar', 'granulated sugar', 'white sugar', 'brown sugar', 'powdered sugar', 'confectioner sugar',
+        'honey', 'maple syrup', 'agave', 'molasses', 'corn syrup',
+        // Baking
+        'baking powder', 'baking soda', 'yeast', 'active dry yeast', 'instant yeast', 'vanilla extract',
+        'almond extract', 'cocoa powder', 'chocolate chip', 'chocolate', 'dark chocolate',
+        'milk chocolate', 'white chocolate', 'baking chocolate',
+        // Nuts & Seeds
+        'almond', 'walnut', 'pecan', 'cashew', 'peanut', 'pistachio', 'hazelnut', 'macadamia',
+        'pine nut', 'sesame seed', 'sunflower seed', 'pumpkin seed', 'chia seed', 'flax seed',
+        'poppy seed', 'peanut butter', 'almond butter', 'tahini',
+        // Canned Goods
+        'tomato sauce', 'tomato paste', 'crushed tomato', 'diced tomato', 'tomato puree',
+        'chicken broth', 'beef broth', 'vegetable broth', 'stock', 'coconut cream'
+      ],
+      'Oils & Vinegars': [
+        'oil', 'olive oil', 'extra virgin olive oil', 'vegetable oil', 'canola oil', 'coconut oil',
+        'sesame oil', 'peanut oil', 'avocado oil', 'grapeseed oil', 'sunflower oil', 'corn oil',
+        'vinegar', 'white vinegar', 'apple cider vinegar', 'balsamic vinegar', 'red wine vinegar',
+        'white wine vinegar', 'rice vinegar', 'sherry vinegar'
+      ],
+      'Condiments & Sauces': [
+        'ketchup', 'mustard', 'mayonnaise', 'mayo', 'relish', 'pickle', 'hot sauce', 'tabasco',
+        'sriracha', 'salsa', 'guacamole', 'hummus', 'pesto', 'marinara', 'alfredo',
+        'soy sauce', 'tamari', 'teriyaki sauce', 'worcestershire sauce', 'fish sauce', 'oyster sauce',
+        'hoisin sauce', 'bbq sauce', 'ranch', 'caesar dressing', 'italian dressing', 'vinaigrette',
+        'blue cheese dressing', 'thousand island', 'honey mustard', 'tahini sauce'
+      ],
+      'Spices & Seasonings': [
+        'salt', 'sea salt', 'kosher salt', 'pepper', 'black pepper', 'white pepper', 'cayenne',
+        'paprika', 'cumin', 'coriander', 'turmeric', 'curry powder', 'garam masala', 'chili powder',
+        'red pepper flake', 'crushed red pepper', 'garlic powder', 'onion powder', 'ginger powder',
+        'cinnamon', 'nutmeg', 'clove', 'allspice', 'cardamom', 'star anise', 'fennel seed',
+        'mustard seed', 'celery seed', 'caraway seed', 'italian seasoning', 'herbs de provence',
+        'taco seasoning', 'fajita seasoning', 'cajun seasoning', 'old bay', 'everything bagel seasoning'
+      ],
+      'Bread & Bakery': [
+        'bread', 'white bread', 'wheat bread', 'whole grain bread', 'sourdough', 'baguette',
+        'ciabatta', 'pita', 'naan', 'tortilla', 'flour tortilla', 'corn tortilla', 'taco shell',
+        'tortilla chip', 'bagel', 'english muffin', 'croissant', 'roll', 'dinner roll', 'bun',
+        'hamburger bun', 'hot dog bun', 'slider bun', 'crouton', 'breadcrumb', 'panko'
+      ],
+      'Frozen Foods': [
+        'ice cream', 'frozen yogurt', 'sorbet', 'ice', 'ice cube', 'frozen vegetable',
+        'frozen fruit', 'frozen berry', 'frozen pea', 'frozen corn', 'frozen pizza', 'frozen waffle'
+      ],
+      'Beverages': [
+        'water', 'sparkling water', 'soda', 'juice', 'orange juice', 'apple juice', 'cranberry juice',
+        'coffee', 'tea', 'green tea', 'black tea', 'herbal tea', 'wine', 'red wine', 'white wine',
+        'beer', 'sake', 'rum', 'vodka', 'whiskey', 'bourbon', 'gin', 'tequila', 'brandy'
+      ],
+      'Other': []
+    };
 
-    setShoppingList(list);
+    const categorizedList = {};
+    Object.keys(categories).forEach(cat => categorizedList[cat] = []);
+
+    // Format and categorize items
+    Object.entries(ingredientsMap).forEach(([key, data]) => {
+      const qty = Math.round(data.quantity * 100) / 100; // Round to 2 decimals
+      const unit = data.unit;
+      const ing = data.ingredient;
+
+      // Pluralize ingredient if needed
+      let displayIng = ing;
+      const massNouns = ['flour', 'sugar', 'rice', 'milk', 'butter', 'oil', 'salt', 'pepper', 'water', 'cheese', 'honey', 'yogurt', 'bread', 'ice'];
+      const isMassNoun = massNouns.some(noun => ing.includes(noun));
+
+      if (!unit && qty > 1 && !isMassNoun) {
+        if (ing.endsWith('f')) {
+          displayIng = ing.slice(0, -1) + 'ves'; // leaf -> leaves
+        } else if (ing.endsWith('y') && !ing.endsWith('ay') && !ing.endsWith('ey')) {
+          displayIng = ing.slice(0, -1) + 'ies'; // berry -> berries
+        } else if (ing.endsWith('o')) {
+          displayIng = ing + 'es'; // tomato -> tomatoes
+        } else if (!ing.endsWith('s')) {
+          displayIng = ing + 's';
+        }
+      }
+
+      // Capitalize ingredient name
+      displayIng = displayIng.charAt(0).toUpperCase() + displayIng.slice(1);
+
+      // Find category
+      let foundCategory = 'Other';
+      for (const [cat, items] of Object.entries(categories)) {
+        if (items.some(item => ing.includes(item) || item.includes(ing))) {
+          foundCategory = cat;
+          break;
+        }
+      }
+
+      categorizedList[foundCategory].push({
+        quantity: qty,
+        unit: unit,
+        ingredient: displayIng,
+        count: 1,
+        checked: false,
+      });
+    });
+
+    // Build final list with category headers
+    const finalList = [];
+    Object.keys(categories).forEach(category => {
+      if (categorizedList[category].length > 0) {
+        // Add category header
+        finalList.push({
+          item: category,
+          count: 1,
+          checked: false,
+          isHeader: true,
+        });
+        // Sort and add items
+        categorizedList[category].sort((a, b) => a.ingredient.localeCompare(b.ingredient));
+        finalList.push(...categorizedList[category]);
+      }
+    });
+
+    setShoppingList(finalList);
   };
 
   const handleAddRecipe = () => {
@@ -863,15 +1278,29 @@ const RecipeManager = () => {
 
     if (editingRecipe) {
       const result = await api.updateRecipe(editingRecipe.id, recipe);
-      if (result.error) setError(result.error);
-      else {
+      if (result.error) {
+        // Handle validation errors from FastAPI
+        const errorMsg = typeof result.error === 'string'
+          ? result.error
+          : Array.isArray(result.error)
+            ? result.error.map(e => e.msg || JSON.stringify(e)).join(', ')
+            : JSON.stringify(result.error);
+        setError(errorMsg);
+      } else {
         setRecipes(recipes.map((r) => (r.id === editingRecipe.id ? result : r)));
         setShowRecipeForm(false);
       }
     } else {
       const result = await api.createRecipe(recipe);
-      if (result.error) setError(result.error);
-      else {
+      if (result.error) {
+        // Handle validation errors from FastAPI
+        const errorMsg = typeof result.error === 'string'
+          ? result.error
+          : Array.isArray(result.error)
+            ? result.error.map(e => e.msg || JSON.stringify(e)).join(', ')
+            : JSON.stringify(result.error);
+        setError(errorMsg);
+      } else {
         setRecipes([...recipes, result]);
         setShowRecipeForm(false);
       }
@@ -882,23 +1311,27 @@ const RecipeManager = () => {
     const matchesSearch =
       searchQuery === "" ||
       recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      recipe.ingredients?.some((ing) => ing.toLowerCase().includes(searchQuery.toLowerCase()));
+      recipe.recipe_ingredients?.some((ri) => {
+        const ingName = (ri.ingredient?.name || ri.ingredient_name || "").toLowerCase();
+        return ingName.includes(searchQuery.toLowerCase());
+      });
 
     const matchesTags =
-      selectedTags.length === 0 || selectedTags.every((tag) => recipe.tags?.includes(tag));
+      selectedTags.length === 0 ||
+      selectedTags.every((tag) =>
+        recipe.tags?.some(t => (typeof t === 'string' ? t : t.name) === tag)
+      );
 
     return matchesSearch && matchesTags;
   });
 
-  const allTags = [...new Set(recipes.flatMap((r) => r.tags || []))];
+  const allTags = [...new Set(recipes.flatMap((r) =>
+    (r.tags || []).map(t => typeof t === 'string' ? t : t.name)
+  ))];
 
   if (!user) return <AuthScreen onAuth={setUser} />;
 
-  // Main app layout updated to match wireframe design
-  // Key changes:
-  // - Beige/cream background (#FFF8E8) for warmer look
-  // - Cleaner navigation with orange active state (#FFB84D)
-  // - Gray inactive buttons for better visual hierarchy
+  // Layout updated to match wireframe design
   return (
     <div className="min-h-screen bg-[#FFF8E8]">
       <nav className="bg-white shadow-sm border-b border-gray-200">
@@ -952,7 +1385,10 @@ const RecipeManager = () => {
                 <span>{user?.name ?? "User"}</span>
               </div>
 
-              <button onClick={() => setUser(null)} className="text-gray-500 hover:text-red-500">
+              <button onClick={() => {
+                localStorage.removeItem("authToken");
+                setUser(null);
+              }} className="text-gray-500 hover:text-red-500">
                 <LogOut className="w-5 h-5" />
               </button>
             </div>

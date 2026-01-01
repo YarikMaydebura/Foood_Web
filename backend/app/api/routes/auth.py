@@ -5,13 +5,17 @@ from sqlalchemy import select
 from app.api.deps import get_db
 from app.models.user import User
 from app.schemas.auth import LoginIn, RegisterIn
-from app.core.security import verify_password, hash_password
+from app.core.security import verify_password, hash_password, create_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 def _user_out(user: User) -> dict:
-    # フロントは result.user を参照する
-    return {"user": {"id": user.id, "name": getattr(user, "name", None), "email": user.email}}
+    # Generate JWT token for Session 2 authentication
+    access_token = create_access_token(user.email)
+    return {
+        "user": {"id": user.id, "name": getattr(user, "name", None), "email": user.email},
+        "access_token": access_token
+    }
 
 @router.post("/signup")
 def signup(body: RegisterIn, db: Session = Depends(get_db)):
@@ -19,7 +23,7 @@ def signup(body: RegisterIn, db: Session = Depends(get_db)):
     if exists:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    # Create User instance with all required fields including name
+    # Create User instance as I had trouble creating a dummy account
     user = User(
         name=body.name,
         email=body.email,

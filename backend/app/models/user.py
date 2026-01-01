@@ -7,7 +7,7 @@ from app.db.base import Base
 class User(Base):
     __tablename__ = "users"
 
-    # Changed from BigInteger to Integer for SQLite autoincrement compatibility
+    # Changed from Integer to Integer for SQLite autoincrement compatibility
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     # Added name field to store user's full name
     name: Mapped[str] = mapped_column(String(255), nullable=False)

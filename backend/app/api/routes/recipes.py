@@ -5,6 +5,7 @@ from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.schemas.recipe import RecipeCreate, RecipeUpdate, RecipeOut, RecipeListOut
 from app.crud import recipe as crud_recipe
+from app.crud.tag import get_or_create_tag
 
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
@@ -38,6 +39,13 @@ def create_recipe(
     current_user: User = Depends(get_current_user)
 ):
     """Create a new recipe"""
+    # Convert tag names to tag IDs (get or create tags)
+    tag_ids = body.tag_ids
+    if body.tags:
+        tags = [get_or_create_tag(db, current_user.id, tag_name.strip())
+                for tag_name in body.tags if tag_name.strip()]
+        tag_ids = [tag.id for tag in tags]
+
     return crud_recipe.create_recipe(
         db,
         user_id=current_user.id,
@@ -46,7 +54,7 @@ def create_recipe(
         description=body.description,
         image_url=body.image_url,
         ingredients=[ing.model_dump() for ing in body.ingredients],
-        tag_ids=body.tag_ids,
+        tag_ids=tag_ids,
     )
 
 
@@ -66,6 +74,13 @@ def update_recipe(
     if body.ingredients is not None:
         ingredients = [ing.model_dump() for ing in body.ingredients]
 
+    # Convert tag names to tag IDs (get or create tags)
+    tag_ids = body.tag_ids
+    if body.tags is not None:
+        tags = [get_or_create_tag(db, current_user.id, tag_name.strip())
+                for tag_name in body.tags if tag_name.strip()]
+        tag_ids = [tag.id for tag in tags]
+
     return crud_recipe.update_recipe(
         db,
         recipe,
@@ -74,7 +89,7 @@ def update_recipe(
         description=body.description,
         image_url=body.image_url,
         ingredients=ingredients,
-        tag_ids=body.tag_ids,
+        tag_ids=tag_ids,
     )
 
 
