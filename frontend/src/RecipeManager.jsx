@@ -273,14 +273,14 @@ const RecipesView = ({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold text-gray-800">My Recipes</h2>
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-3xl font-bold text-gray-800">My Recipes</h2>
         <button
           onClick={onAddRecipe}
-          className="flex items-center gap-2 bg-orange-50 text-orange-700 border-2 border-orange-300 px-6 py-3 rounded-lg hover:bg-orange-100 transition shadow-sm"
+          className="flex items-center gap-1 sm:gap-2 bg-orange-50 text-orange-700 border-2 border-orange-300 px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-orange-100 transition shadow-sm"
         >
-          <Plus className="w-5 h-5" />
-          <span className="font-semibold">Add Recipe</span>
+          <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+          <span className="font-semibold text-sm sm:text-base">Add Recipe</span>
         </button>
       </div>
 
@@ -373,11 +373,11 @@ const RecipesView = ({
             </>
           ) : (
             <>
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">No recipes yet</h3>
-              <p className="text-gray-500 mb-6">Start building your recipe collection!</p>
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">No recipes yet</h3>
+              <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6">Start building your recipe collection!</p>
               <button
                 onClick={onAddRecipe}
-                className="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 transition"
+                className="bg-orange-500 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-orange-600 transition"
               >
                 Add Your First Recipe
               </button>
@@ -533,21 +533,21 @@ const ShoppingListView = ({ shoppingList, setShoppingList }) => {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold text-gray-800">Shopping List</h2>
+      <div className="flex items-baseline justify-between mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-3xl font-bold text-gray-800">Shopping List</h2>
         {totalCount > 0 && (
-          <div className="text-sm text-gray-600">
+          <div className="text-xs sm:text-sm text-gray-600">
             {uncheckedCount} of {totalCount} items remaining
           </div>
         )}
       </div>
 
-      <div className="bg-white rounded-xl shadow-lg p-6">
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
         {shoppingList.length === 0 ? (
-          <div className="text-center py-12">
-            <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">No items in your list</h3>
-            <p className="text-gray-500">Add recipes to your meal planner to generate a shopping list</p>
+          <div className="text-center py-8 sm:py-12">
+            <ShoppingCart className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-3 sm:mb-4" />
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">No items in your list</h3>
+            <p className="text-sm sm:text-base text-gray-500">Add recipes to your meal planner to generate a shopping list</p>
           </div>
         ) : (
           <>
@@ -556,25 +556,25 @@ const ShoppingListView = ({ shoppingList, setShoppingList }) => {
                 item.isHeader ? (
                   <div
                     key={index}
-                    className="flex items-center gap-3 pt-6 pb-2 border-b-2 border-orange-200 mt-4 first:mt-0 first:pt-0"
+                    className="flex items-center gap-2 sm:gap-3 pt-4 sm:pt-6 pb-2 border-b-2 border-orange-200 mt-3 sm:mt-4 first:mt-0 first:pt-0"
                   >
-                    <h3 className="text-xl font-bold text-orange-600 uppercase tracking-wide">
+                    <h3 className="text-lg sm:text-xl font-bold text-orange-600 uppercase tracking-wide">
                       {item.item}
                     </h3>
                   </div>
                 ) : (
                   <div
                     key={index}
-                    className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition group"
+                    className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 hover:bg-gray-50 rounded-lg transition group"
                   >
                     <input
                       type="checkbox"
                       checked={item.checked}
                       onChange={() => toggleItem(index)}
-                      className="w-5 h-5 text-orange-500 rounded focus:ring-2 focus:ring-orange-500 cursor-pointer"
+                      className="w-5 h-5 text-orange-500 rounded focus:ring-2 focus:ring-orange-500 cursor-pointer flex-shrink-0"
                     />
                     <span
-                      className={`flex-1 text-lg ${
+                      className={`flex-1 text-base sm:text-lg ${
                         item.checked ? "line-through text-gray-400" : "text-gray-800"
                       }`}
                     >
@@ -606,7 +606,7 @@ const ShoppingListView = ({ shoppingList, setShoppingList }) => {
 
             {totalCount > 0 && (
               <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <button
                     onClick={() =>
                       setShoppingList(shoppingList.map((item) => ({ ...item, checked: true })))
@@ -706,16 +706,16 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4 z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between rounded-t-2xl">
-          <h2 className="text-2xl font-bold text-gray-800">Settings</h2>
+    <div className="fixed inset-0 flex items-center justify-center p-2 sm:p-4 z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 sm:p-6 flex items-center justify-between rounded-t-2xl">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Settings</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
-        <div className="p-6 space-y-8">
+        <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
           {error && (
             <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
               {error}
@@ -729,15 +729,15 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
 
           {/* Profile Section */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Profile Information</h3>
-            <div className="space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">Profile Information</h3>
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <label className="block text-sm font-medium text-black mb-2">Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
                 />
               </div>
               <div>
@@ -746,12 +746,12 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
                 />
               </div>
               <button
                 onClick={handleSaveProfile}
-                className="px-6 py-3 bg-orange-50 text-orange-700 border-2 border-orange-300 rounded-lg hover:bg-orange-100 transition font-semibold shadow-sm"
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-orange-50 text-orange-700 border-2 border-orange-300 rounded-lg hover:bg-orange-100 transition font-semibold shadow-sm"
               >
                 Save Profile
               </button>
@@ -760,15 +760,15 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
 
           {/* Password Section */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Change Password</h3>
-            <div className="space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">Change Password</h3>
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <label className="block text-sm font-medium text-black mb-2">Current Password</label>
                 <input
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
                 />
               </div>
               <div>
@@ -777,7 +777,7 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
                 />
               </div>
               <div>
@@ -786,12 +786,12 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
+                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white"
                 />
               </div>
               <button
                 onClick={handleChangePassword}
-                className="px-6 py-3 bg-orange-50 text-orange-700 border-2 border-orange-300 rounded-lg hover:bg-orange-100 transition font-semibold shadow-sm"
+                className="px-4 sm:px-6 py-2 sm:py-3 bg-orange-50 text-orange-700 border-2 border-orange-300 rounded-lg hover:bg-orange-100 transition font-semibold shadow-sm"
               >
                 Change Password
               </button>
@@ -800,10 +800,10 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
 
           {/* Meal Planner Settings */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Meal Planner Randomizer</h3>
-            <p className="text-sm text-gray-600 mb-4">Choose how the Randomize button fills your meal plan:</p>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-3 sm:mb-4">Meal Planner Randomizer</h3>
+            <p className="text-sm text-gray-600 mb-3 sm:mb-4">Choose how the Randomize button fills your meal plan:</p>
             <div className="space-y-3">
-              <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition"
+              <label className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition"
                 style={{ borderColor: tempRandomizerMode === 'smart' ? '#FF8C00' : '#E5E7EB' }}>
                 <input
                   type="radio"
@@ -813,11 +813,11 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
                   className="mt-1"
                 />
                 <div>
-                  <div className="font-semibold text-gray-800">Smart Match (Default)</div>
-                  <div className="text-sm text-gray-600">Matches recipes by tags: Breakfast → Lunch → Dinner → Dessert/Snack</div>
+                  <div className="font-semibold text-gray-800 text-sm sm:text-base">Smart Match (Default)</div>
+                  <div className="text-xs sm:text-sm text-gray-600">Matches recipes by tags: Breakfast → Lunch → Dinner → Dessert/Snack</div>
                 </div>
               </label>
-              <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition"
+              <label className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition"
                 style={{ borderColor: tempRandomizerMode === 'full-random' ? '#FF8C00' : '#E5E7EB' }}>
                 <input
                   type="radio"
@@ -827,24 +827,24 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
                   className="mt-1"
                 />
                 <div>
-                  <div className="font-semibold text-gray-800">Full Random</div>
-                  <div className="text-sm text-gray-600">Randomly selects any recipe for any meal slot</div>
+                  <div className="font-semibold text-gray-800 text-sm sm:text-base">Full Random</div>
+                  <div className="text-xs sm:text-sm text-gray-600">Randomly selects any recipe for any meal slot</div>
                 </div>
               </label>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row gap-3 justify-end pt-4 border-t border-gray-200">
             <button
               onClick={handleCancel}
-              className="px-6 py-3 bg-gray-50 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition font-medium"
+              className="px-4 sm:px-6 py-2 sm:py-3 bg-gray-50 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-100 transition font-medium"
             >
               Cancel
             </button>
             <button
               onClick={handleSaveAndClose}
-              className="px-6 py-3 bg-orange-50 text-orange-700 border-2 border-orange-300 rounded-lg hover:bg-orange-100 transition font-semibold shadow-sm"
+              className="px-4 sm:px-6 py-2 sm:py-3 bg-orange-50 text-orange-700 border-2 border-orange-300 rounded-lg hover:bg-orange-100 transition font-semibold shadow-sm"
             >
               Save & Close
             </button>
@@ -992,11 +992,11 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
 
   return (
     // Semi-transparent backdrop using inline style (rgba) to show greyed-out background
-    <div className="fixed inset-0 flex items-center justify-center p-4 z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="p-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-black">
+    <div className="fixed inset-0 flex items-center justify-center p-2 sm:p-4 z-50" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 w-full max-w-md sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-8">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-black">
               {recipe ? "Edit Recipe" : "Add New Recipe"}
             </h2>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
@@ -1073,8 +1073,8 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
               <textarea
                 value={ingredients}
                 onChange={(e) => setIngredients(e.target.value)}
-                rows={6}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white resize-none"
+                rows={4}
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white resize-none"
               />
             </div>
 
@@ -1083,8 +1083,8 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
               <textarea
                 value={instructions}
                 onChange={(e) => setInstructions(e.target.value)}
-                rows={6}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white resize-none"
+                rows={4}
+                className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white resize-none"
               />
             </div>
 
@@ -1204,14 +1204,14 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-3xl font-bold text-gray-800">Weekly Meal Planner</h2>
-        <div className="flex gap-3">
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-3xl font-bold text-gray-800">Weekly Meal Planner</h2>
+        <div className="flex gap-2 sm:gap-3">
           <button
             onClick={randomizeMealPlan}
-            className="relative flex items-center gap-2 bg-emerald-50 text-emerald-700 border-2 border-emerald-300 px-6 py-3 rounded-lg hover:bg-emerald-100 transition shadow-sm group"
+            className="relative flex items-center gap-1 sm:gap-2 bg-emerald-50 text-emerald-700 border-2 border-emerald-300 px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-emerald-100 transition shadow-sm group"
           >
-            <span className="font-semibold">Randomize</span>
+            <span className="font-semibold text-sm sm:text-base">Randomize</span>
             <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
               {randomizerMode === 'full-random'
                 ? 'Randomly fills all slots with any recipe'
@@ -1220,9 +1220,9 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
           </button>
           <button
             onClick={clearAllMeals}
-            className="flex items-center gap-2 bg-red-50 text-red-700 border-2 border-red-300 px-6 py-3 rounded-lg hover:bg-red-100 transition shadow-sm"
+            className="flex items-center gap-1 sm:gap-2 bg-red-50 text-red-700 border-2 border-red-300 px-3 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-red-100 transition shadow-sm"
           >
-            <span className="font-semibold">Clear All</span>
+            <span className="font-semibold text-sm sm:text-base">Clear All</span>
           </button>
         </div>
       </div>
@@ -1234,17 +1234,17 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
           <p className="text-gray-500">Add some recipes first to start planning your meals</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-lg p-6 overflow-x-auto">
-          <table className="w-full min-w-[800px]">
+        <div className="bg-white rounded-xl shadow-lg p-3 sm:p-6 overflow-x-auto">
+          <table className="w-full min-w-[550px] sm:min-w-[800px]">
             <thead>
               <tr>
-                <th className="p-3 text-left font-semibold text-gray-700 border-b-2 border-gray-200">
+                <th className="p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold text-gray-700 border-b-2 border-gray-200">
                   Day
                 </th>
                 {meals.map((meal) => (
                   <th
                     key={meal}
-                    className="p-3 text-left font-semibold text-gray-700 border-b-2 border-gray-200"
+                    className="p-2 sm:p-3 text-left text-xs sm:text-sm font-semibold text-gray-700 border-b-2 border-gray-200"
                   >
                     {meal}
                   </th>
@@ -1254,16 +1254,16 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
             <tbody>
               {days.map((day) => (
                 <tr key={day} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="p-3 font-medium text-gray-800">{day}</td>
+                  <td className="p-2 sm:p-3 text-xs sm:text-sm font-medium text-gray-800">{day}</td>
                   {meals.map((meal) => {
                     const recipeId = mealPlan[day]?.[meal];
                     const recipe = recipes.find((r) => r.id === recipeId);
 
                     return (
-                      <td key={meal} className="p-3">
+                      <td key={meal} className="p-2 sm:p-3">
                         {recipe ? (
-                          <div className="bg-orange-100 rounded-lg p-3 relative">
-                            <p className="text-sm font-medium text-gray-800 pr-6">{recipe.title}</p>
+                          <div className="bg-orange-100 rounded-lg p-2 sm:p-3 relative">
+                            <p className="text-xs sm:text-sm font-medium text-gray-800 pr-6">{recipe.title}</p>
                             {recipe.tags && recipe.tags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
                                 {recipe.tags.map((tag, idx) => (
@@ -1291,9 +1291,9 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
                                 e.target.value = "";
                               }
                             }}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white hover:border-orange-400 transition"
+                            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white hover:border-orange-400 transition"
                           >
-                            <option value="">+ Add recipe</option>
+                            <option value="">+ Add</option>
                             {recipes.map((r) => (
                               <option key={r.id} value={r.id}>
                                 {r.title}
@@ -1367,13 +1367,13 @@ const AuthScreen = ({ onAuth }) => {
 
   return (
     <div className="min-h-screen bg-[#F5EFE6] flex items-center justify-center p-4">
-      <div className="bg-[#D5D5D5] rounded-3xl shadow-xl p-12 w-full max-w-md">
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <Book className="w-12 h-12 text-orange-500" />
-          <h1 className="text-3xl font-bold text-black">Recipe Manager</h1>
+      <div className="bg-[#D5D5D5] rounded-3xl shadow-xl p-6 sm:p-12 w-full max-w-md">
+        <div className="flex items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+          <Book className="w-10 h-10 sm:w-12 sm:h-12 text-orange-500" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-black">Recipe Manager</h1>
         </div>
 
-        <h2 className="text-2xl font-normal text-black mb-8 text-center">
+        <h2 className="text-xl sm:text-2xl font-normal text-black mb-6 sm:mb-8 text-center">
           {isLogin ? "Welcome" : "Create Account"}
         </h2>
 
@@ -1919,60 +1919,60 @@ const RecipeManager = () => {
 
   // Layout updated to match wireframe design
   return (
-    <div className="min-h-screen bg-[#FFF8E8]">
+    <div className="min-h-screen bg-[#FFF8E8] overflow-x-hidden">
       <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Book className="w-8 h-8 text-orange-500" />
-              <h1 className="text-2xl font-bold text-black">Recipe Manager</h1>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Book className="w-8 h-8 sm:w-8 sm:h-8 text-orange-500 flex-shrink-0" />
+              <h1 className="text-base sm:text-2xl font-bold text-black whitespace-nowrap">Recipe Manager</h1>
             </div>
 
-            {/* Navigation buttons with orange active state and gray inactive state */}
-            <div className="flex items-center gap-4">
+            {/* Navigation buttons - responsive with icons only on mobile */}
+            <div className="flex items-center gap-1 sm:gap-4">
               <button
                 onClick={() => setCurrentView("recipes")}
-                className={`flex items-center gap-2 px-6 py-2 rounded-lg transition font-medium ${
+                className={`flex items-center gap-1 sm:gap-2 p-2 sm:px-6 sm:py-2 rounded-lg transition font-medium ${
                   currentView === "recipes"
                     ? "bg-[#FFB84D] text-white"
                     : "bg-gray-200 text-gray-600 hover:bg-gray-300"
                 }`}
               >
-                <Book className="w-5 h-5" />
-                <span>Recipes</span>
+                <Book className="w-5 h-5 sm:w-5 sm:h-5" />
+                <span className="hidden md:inline">Recipes</span>
               </button>
 
               <button
                 onClick={() => setCurrentView("planner")}
-                className={`flex items-center gap-2 px-6 py-2 rounded-lg transition font-medium ${
+                className={`flex items-center gap-1 sm:gap-2 p-2 sm:px-6 sm:py-2 rounded-lg transition font-medium ${
                   currentView === "planner"
                     ? "bg-[#FFB84D] text-white"
                     : "bg-gray-200 text-gray-600 hover:bg-gray-300"
                 }`}
               >
-                <Calendar className="w-5 h-5" />
-                <span>Meal Planner</span>
+                <Calendar className="w-5 h-5 sm:w-5 sm:h-5" />
+                <span className="hidden md:inline">Meal Planner</span>
               </button>
 
               <button
                 onClick={() => setCurrentView("shopping")}
-                className={`flex items-center gap-2 px-6 py-2 rounded-lg transition font-medium ${
+                className={`flex items-center gap-1 sm:gap-2 p-2 sm:px-6 sm:py-2 rounded-lg transition font-medium ${
                   currentView === "shopping"
                     ? "bg-[#FFB84D] text-white"
                     : "bg-gray-200 text-gray-600 hover:bg-gray-300"
                 }`}
               >
-                <ShoppingCart className="w-5 h-5" />
-                <span>Shopping List</span>
+                <ShoppingCart className="w-5 h-5 sm:w-5 sm:h-5" />
+                <span className="hidden md:inline">Shopping List</span>
               </button>
 
               <div className="relative">
                 <button
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
-                  className="flex items-center gap-2 text-gray-700 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition"
+                  className="flex items-center gap-1 sm:gap-2 text-gray-700 hover:text-gray-900 px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-100 transition"
                 >
                   <User className="w-5 h-5" />
-                  <span>{user?.name ?? "User"}</span>
+                  <span className="hidden sm:inline">{user?.name ?? "User"}</span>
                   <ChevronDown className="w-4 h-4" />
                 </button>
 
@@ -2006,7 +2006,7 @@ const RecipeManager = () => {
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
             {error}
