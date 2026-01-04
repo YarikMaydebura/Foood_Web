@@ -17,6 +17,7 @@ import {
 
 // API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+const APP_URL = import.meta.env.VITE_APP_URL ?? window.location.origin;
 
 // Helper function to get auth headers for Session 2 authentication
 const getAuthHeaders = () => {
@@ -244,15 +245,16 @@ const RecipesView = ({
 
     // Encode recipe data as base64 JSON for sharing
     const encodedRecipe = btoa(JSON.stringify(shareableRecipe));
-    const shareUrl = `${window.location.origin}/import?recipe=${encodedRecipe}`;
+    const shareUrl = `${APP_URL}/import?recipe=${encodedRecipe}`;
 
-    // Check if Web Share API is available
-    if (navigator.share && navigator.canShare({ url: shareUrl })) {
+    // Try Web Share API first (works on mobile)
+    if (navigator.share) {
       navigator.share({
         title: `Recipe: ${recipe.title}`,
         text: `Check out this recipe: ${recipe.title}`,
         url: shareUrl
       }).catch(err => {
+        // If share was cancelled or failed, try clipboard
         if (err.name !== 'AbortError') {
           copyShareUrl(shareUrl);
         }
@@ -264,11 +266,18 @@ const RecipesView = ({
   };
 
   const copyShareUrl = (url) => {
-    navigator.clipboard.writeText(url).then(() => {
-      alert('Share link copied to clipboard! Send this link to someone to add the recipe to their account.');
-    }).catch(() => {
-      alert('Failed to copy share link');
-    });
+    // Try clipboard API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        alert('Share link copied to clipboard! Send this link to someone to add the recipe to their account.');
+      }).catch(() => {
+        // Clipboard failed, show URL in alert to manually copy
+        prompt('Copy this share link:', url);
+      });
+    } else {
+      // No clipboard API, use prompt as fallback
+      prompt('Copy this share link:', url);
+    }
   };
 
   return (
@@ -1458,6 +1467,18 @@ const RecipeManager = () => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [randomizerMode, setRandomizerMode] = useState(localStorage.getItem('randomizerMode') || 'smart'); // 'smart' or 'full-random'
 
+  // Close user dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showUserDropdown && !event.target.closest('.user-dropdown-container')) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showUserDropdown]);
+
   // Check for existing auth token on mount
   useEffect(() => {
     const checkAuth = async () => {
@@ -1966,7 +1987,7 @@ const RecipeManager = () => {
                 <span className="hidden md:inline">Shopping List</span>
               </button>
 
-              <div className="relative">
+              <div className="relative user-dropdown-container">
                 <button
                   onClick={() => setShowUserDropdown(!showUserDropdown)}
                   className="flex items-center gap-1 sm:gap-2 text-gray-700 hover:text-gray-900 px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-100 transition"
