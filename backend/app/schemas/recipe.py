@@ -11,6 +11,7 @@ class RecipeCreate(BaseModel):
     instructions: str
     ingredients: list[RecipeIngredientCreate] = []
     tag_ids: list[int] = []
+    tags: list[str] = []  # Accept tag names from frontend
 
 
 class RecipeUpdate(BaseModel):
@@ -20,6 +21,7 @@ class RecipeUpdate(BaseModel):
     instructions: str | None = None
     ingredients: list[RecipeIngredientCreate] | None = None
     tag_ids: list[int] | None = None
+    tags: list[str] | None = None  # Accept tag names from frontend
 
 
 class RecipeOut(BaseModel):
@@ -45,7 +47,9 @@ class RecipeListOut(BaseModel):
     title: str
     description: str | None
     image_url: str | None
+    instructions: str
     created_at: datetime
+    recipe_ingredients: list[RecipeIngredientOut] = []
     tags: list[TagOut] = []
 
     class Config:

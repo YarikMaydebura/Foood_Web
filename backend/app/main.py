@@ -8,11 +8,12 @@ from app.db.base import Base
 # Import all models so they are registered with SQLAlchemy
 from app.models.user import User  # noqa
 from app.models.recipe import Recipe  # noqa
+# Import both MealPlan and MealPlanEntry models for table creation
+from app.models.meal_plan import MealPlan, MealPlanEntry  # noqa
 from app.models.ingredient import Ingredient  # noqa
 from app.models.tag import Tag  # noqa
 from app.models.recipe_ingredient import RecipeIngredient  # noqa
 from app.models.recipe_tag import recipe_tags  # noqa
-from app.models.meal_plan import MealPlanEntry  # noqa
 from app.models.shopping_list import ShoppingList  # noqa
 from app.models.shopping_list_item import ShoppingListItem  # noqa
 
@@ -48,4 +49,4 @@ app.include_router(shopping_lists_router)
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+    return {"ok": True, "status": "running"}

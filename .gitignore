@@ -10,6 +10,27 @@ node_modules/
 .env
 /server/.env
 /client/.env
+/backend/.env
+/frontend/.env
 
 # Ignore logs
 *.log
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Ignore database files (SQLite)
+*.db
+*.sqlite
+*.sqlite3
+
+# Ignore Claude Code session data
+.claude/
+
+# Ignore temporary/test files
+nul
+backend/add_recipes.py

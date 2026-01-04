@@ -13,7 +13,7 @@ def list_recipes_by_user(db: Session, user_id: int) -> list[Recipe]:
         .where(Recipe.user_id == user_id)
         .options(joinedload(Recipe.tags), joinedload(Recipe.recipe_ingredients))
         .order_by(Recipe.id.desc())
-    ))
+    ).unique())
 
 
 def get_recipe(db: Session, recipe_id: int) -> Recipe | None:
@@ -158,7 +158,7 @@ def search_recipes(db: Session, user_id: int, query: str) -> list[Recipe]:
         .where(Recipe.user_id == user_id, Recipe.title.ilike(f"%{query}%"))
         .options(joinedload(Recipe.tags))
         .order_by(Recipe.id.desc())
-    ))
+    ).unique())
 
 
 def get_recipes_by_tag(db: Session, user_id: int, tag_id: int) -> list[Recipe]:
@@ -169,4 +169,4 @@ def get_recipes_by_tag(db: Session, user_id: int, tag_id: int) -> list[Recipe]:
         .where(Recipe.user_id == user_id, Tag.id == tag_id)
         .options(joinedload(Recipe.tags))
         .order_by(Recipe.id.desc())
-    ))
+    ).unique())
