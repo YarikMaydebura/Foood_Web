@@ -9,7 +9,8 @@ const features = [
     title: 'Smart Recipe Management',
     description: 'Store unlimited recipes from any source. Import from websites, add your own creations, or browse our curated collection. Organize with tags, categories, and custom collections that work for you.',
     bgColor: 'from-orange-500 to-orange-600',
-    iconBg: 'bg-white/20'
+    iconBg: 'bg-white/20',
+    foodPhoto: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=1200&q=80'
   },
   {
     span: 'col-span-12 lg:col-span-5',
@@ -17,7 +18,8 @@ const features = [
     title: 'Weekly Meal Planner',
     description: 'Drag and drop recipes onto your calendar. Get smart suggestions based on your preferences or let us randomize for variety.',
     bgColor: 'from-yellow-warm to-orange-400',
-    iconBg: 'bg-white/20'
+    iconBg: 'bg-white/20',
+    foodPhoto: 'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=1200&q=80'
   },
   {
     span: 'col-span-12 lg:col-span-5',
@@ -25,7 +27,8 @@ const features = [
     title: 'Auto Shopping Lists',
     description: 'Generate grocery lists instantly from your meal plan. Organized by category, with smart consolidation of duplicate ingredients.',
     bgColor: 'from-terracotta to-orange-500',
-    iconBg: 'bg-white/20'
+    iconBg: 'bg-white/20',
+    foodPhoto: 'https://images.unsplash.com/photo-1488459716781-31db52582fe9?auto=format&fit=crop&w=1200&q=80'
   },
   {
     span: 'col-span-12 lg:col-span-7',
@@ -33,7 +36,8 @@ const features = [
     title: 'Share & Collaborate',
     description: 'Share your favorite recipes with family and friends. Build shared meal plans for households. Export recipes in multiple formats.',
     bgColor: 'from-sage to-orange-400',
-    iconBg: 'bg-white/20'
+    iconBg: 'bg-white/20',
+    foodPhoto: 'https://images.unsplash.com/photo-1528712306091-ed0763094c98?auto=format&fit=crop&w=1200&q=80'
   },
   {
     span: 'col-span-12 lg:col-span-6',
@@ -41,7 +45,8 @@ const features = [
     title: 'Save Time & Money',
     description: 'Stop wondering what to cook. Reduce food waste with better planning. Stick to your budget with organized shopping lists.',
     bgColor: 'from-orange-400 to-yellow-warm',
-    iconBg: 'bg-white/20'
+    iconBg: 'bg-white/20',
+    foodPhoto: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?auto=format&fit=crop&w=1200&q=80'
   },
   {
     span: 'col-span-12 lg:col-span-6',
@@ -49,7 +54,8 @@ const features = [
     title: 'Your Data, Secured',
     description: 'All your recipes and meal plans are safely stored and backed up. Access from any device, anytime, anywhere.',
     bgColor: 'from-orange-600 to-orange-700',
-    iconBg: 'bg-white/20'
+    iconBg: 'bg-white/20',
+    foodPhoto: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=1200&q=80'
   },
 ];
 
@@ -68,24 +74,29 @@ const FeatureCard = ({ feature, index }) => {
       className={`${feature.span} ${index % 2 === 1 ? 'lg:mt-12' : ''}`}
     >
       <motion.div
-        whileHover={{ scale: 1.02, y: -5 }}
-        transition={{ duration: 0.3 }}
+        whileHover={{ scale: 1.03, y: -8, rotateY: 2 }}
+        transition={{ duration: 0.4, type: 'spring', stiffness: 200 }}
         className={`relative h-full min-h-[350px] rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br ${feature.bgColor} p-8 lg:p-12 group cursor-pointer`}
       >
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FFFFFF' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }} />
+        {/* Food Photo Background */}
+        <div className="absolute inset-0 opacity-15 group-hover:opacity-25 transition-opacity duration-500">
+          <img
+            src={feature.foodPhoto}
+            alt={feature.title}
+            className="w-full h-full object-cover"
+          />
         </div>
+
+        {/* Gradient Overlay */}
+        <div className={`absolute inset-0 bg-gradient-to-br ${feature.bgColor}`} />
 
         {/* Content */}
         <div className="relative z-10 flex flex-col h-full">
           {/* Icon */}
           <motion.div
-            whileHover={{ rotate: 5, scale: 1.1 }}
-            transition={{ type: 'spring', stiffness: 400 }}
-            className={`w-16 h-16 ${feature.iconBg} backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6 shadow-lg`}
+            whileHover={{ rotate: 360, scale: 1.15 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 15 }}
+            className={`w-16 h-16 ${feature.iconBg} backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:bg-white/30 transition-colors`}
           >
             <feature.icon className="w-8 h-8 text-white" />
           </motion.div>

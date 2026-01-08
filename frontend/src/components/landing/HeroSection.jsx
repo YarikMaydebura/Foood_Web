@@ -1,13 +1,20 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Play } from 'lucide-react';
+import ParallaxImage from '../common/ParallaxImage';
 
 export default function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden">
-      {/* Full-Bleed Food Photography Background */}
+      {/* Parallax Food Photography Background */}
       <div className="absolute inset-0">
-        <div className="w-full h-full bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600" />
+        {/* Beautiful food background image with parallax effect */}
+        <ParallaxImage
+          src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1920&q=80"
+          alt="Delicious food spread"
+          speed={0.3}
+          className="h-full"
+        />
 
         {/* Diagonal Overlay Gradient */}
         <div
@@ -16,9 +23,9 @@ export default function HeroSection() {
         />
       </div>
 
-      {/* Floating Background Elements */}
+      {/* Floating Real Food Ingredients */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Floating Ingredient 1 */}
+        {/* Floating Tomato */}
         <motion.div
           animate={{
             y: [0, -30, 0],
@@ -29,10 +36,16 @@ export default function HeroSection() {
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute top-20 right-20 w-24 h-24 bg-white/10 rounded-full backdrop-blur-sm"
-        />
+          className="absolute top-20 right-20 w-32 h-32 drop-shadow-2xl"
+        >
+          <img
+            src="https://images.unsplash.com/photo-1546470427-227c52abde65?auto=format&fit=crop&w=200&q=80"
+            alt="Tomato"
+            className="w-full h-full object-contain rounded-full bg-white/10 backdrop-blur-sm p-2"
+          />
+        </motion.div>
 
-        {/* Floating Ingredient 2 */}
+        {/* Floating Avocado */}
         <motion.div
           animate={{
             y: [0, -20, 0],
@@ -44,10 +57,16 @@ export default function HeroSection() {
             ease: "easeInOut",
             delay: 0.5
           }}
-          className="absolute bottom-32 left-16 w-32 h-32 bg-yellow-400/10 rounded-full backdrop-blur-sm"
-        />
+          className="absolute bottom-32 left-16 w-40 h-40 drop-shadow-2xl"
+        >
+          <img
+            src="https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?auto=format&fit=crop&w=200&q=80"
+            alt="Avocado"
+            className="w-full h-full object-contain rounded-full bg-white/10 backdrop-blur-sm p-2"
+          />
+        </motion.div>
 
-        {/* Floating Ingredient 3 */}
+        {/* Floating Basil */}
         <motion.div
           animate={{
             y: [0, -25, 0],
@@ -59,8 +78,14 @@ export default function HeroSection() {
             ease: "easeInOut",
             delay: 1
           }}
-          className="absolute top-1/3 right-1/4 w-20 h-20 bg-white/10 rounded-full backdrop-blur-sm"
-        />
+          className="absolute top-1/3 right-1/4 w-24 h-24 drop-shadow-2xl"
+        >
+          <img
+            src="https://images.unsplash.com/photo-1618164436241-4473940d1f5c?auto=format&fit=crop&w=200&q=80"
+            alt="Basil leaves"
+            className="w-full h-full object-contain rounded-full bg-white/10 backdrop-blur-sm p-2"
+          />
+        </motion.div>
       </div>
 
       {/* Content */}

@@ -1,47 +1,54 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
+import LazyImage from '../common/LazyImage';
 
 const testimonials = [
   {
     quote: "Foood has completely transformed my weekly routine. I used to stress about meal planning every single day. Now it's effortless!",
     name: "Sarah Johnson",
     role: "Home Cook, Mom of 3",
-    initials: "SJ",
+    photo: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=300&q=80",
+    recipePhoto: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80",
     bgColor: "from-orange-400 to-orange-600"
   },
   {
     quote: "As someone who loves cooking but hates planning, this app is perfect. The smart shopping lists alone are worth it!",
     name: "Michael Chen",
     role: "Food Enthusiast",
-    initials: "MC",
+    photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80",
+    recipePhoto: "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=150&q=80",
     bgColor: "from-yellow-warm to-orange-500"
   },
   {
     quote: "I've tried so many meal planning apps, but Foood is the first one I actually enjoy using. It's beautiful and intuitive.",
     name: "Emily Rodriguez",
     role: "Busy Professional",
-    initials: "ER",
+    photo: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80",
+    recipePhoto: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=150&q=80",
     bgColor: "from-terracotta to-orange-600"
   },
   {
     quote: "The recipe organization is fantastic. I finally have all my family recipes in one place and can easily share them!",
     name: "David Kim",
     role: "Home Chef",
-    initials: "DK",
+    photo: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80",
+    recipePhoto: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=150&q=80",
     bgColor: "from-orange-500 to-orange-700"
   },
   {
     quote: "Love how it consolidates ingredients across multiple recipes. No more buying duplicate items at the grocery store!",
     name: "Lisa Thompson",
     role: "Budget-Conscious Cook",
-    initials: "LT",
+    photo: "https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80",
+    recipePhoto: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=150&q=80",
     bgColor: "from-sage to-orange-400"
   },
   {
     quote: "This app has helped me discover so many new recipes and cooking techniques. It's like having a personal chef assistant!",
     name: "James Martinez",
     role: "Cooking Student",
-    initials: "JM",
+    photo: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=300&q=80",
+    recipePhoto: "https://images.unsplash.com/photo-1563379926898-05f4575a45d8?auto=format&fit=crop&w=150&q=80",
     bgColor: "from-orange-600 to-yellow-warm"
   }
 ];
@@ -67,22 +74,37 @@ const TestimonialCard = ({ testimonial, index }) => {
       >
         {/* Card Background */}
         <div className={`relative h-full min-h-[400px] rounded-3xl overflow-hidden shadow-xl bg-gradient-to-br ${testimonial.bgColor} p-8 lg:p-10 flex flex-col justify-between`}>
+          {/* Recipe Photo in Corner */}
+          <div className="absolute top-4 right-4 z-20">
+            <div className="w-20 h-20 rounded-xl overflow-hidden shadow-lg border-2 border-white/30 transform rotate-3 group-hover:rotate-6 transition-transform">
+              <LazyImage
+                src={testimonial.recipePhoto}
+                alt={`${testimonial.name}'s recipe`}
+                className="w-full h-full"
+              />
+            </div>
+          </div>
+
           {/* Quote Icon */}
-          <div className="absolute top-6 right-6 text-white/20 text-8xl font-serif leading-none">
+          <div className="absolute top-6 left-6 text-white/20 text-8xl font-serif leading-none">
             "
           </div>
 
           {/* Quote */}
-          <div className="relative z-10">
+          <div className="relative z-10 mt-8">
             <p className="text-white text-lg lg:text-xl font-medium leading-relaxed mb-8 italic">
               "{testimonial.quote}"
             </p>
           </div>
 
-          {/* Customer Info */}
+          {/* Customer Info with Photo */}
           <div className="relative z-10 flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white font-bold text-xl border-2 border-white/30">
-              {testimonial.initials}
+            <div className="w-16 h-16 rounded-full overflow-hidden border-3 border-white/40 shadow-lg flex-shrink-0">
+              <LazyImage
+                src={testimonial.photo}
+                alt={testimonial.name}
+                className="w-full h-full"
+              />
             </div>
             <div>
               <div className="font-bold text-white text-lg">{testimonial.name}</div>

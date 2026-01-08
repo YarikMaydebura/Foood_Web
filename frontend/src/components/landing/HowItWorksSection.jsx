@@ -1,6 +1,9 @@
 import { motion } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import { BookOpen, CalendarDays, ShoppingBag } from 'lucide-react';
+import { useState } from 'react';
+import { BookOpen, CalendarDays, ShoppingBag, Maximize2 } from 'lucide-react';
+import LazyImage from '../common/LazyImage';
+import ImageModal from '../common/ImageModal';
 
 const steps = [
   {
@@ -8,18 +11,21 @@ const steps = [
     title: "Add Your Recipes",
     description: "Import recipes from anywhere or create your own. Organize with tags, categories, and custom collections. Search and filter with ease.",
     icon: BookOpen,
+    screenshot: "https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=800&q=80",
   },
   {
     number: "02",
     title: "Plan Your Week",
     description: "Drag and drop recipes onto your weekly calendar. Use smart suggestions based on your preferences or randomize for variety.",
     icon: CalendarDays,
+    screenshot: "https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=800&q=80",
   },
   {
     number: "03",
     title: "Shop Smart",
     description: "Get an auto-generated shopping list organized by category. Check off items as you shop. Never forget an ingredient again.",
     icon: ShoppingBag,
+    screenshot: "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80",
   }
 ];
 
@@ -28,6 +34,7 @@ const StepItem = ({ step, index, isReversed }) => {
     threshold: 0.3,
     triggerOnce: true
   });
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <motion.div
@@ -37,36 +44,49 @@ const StepItem = ({ step, index, isReversed }) => {
       transition={{ duration: 0.7, delay: index * 0.2 }}
       className={`flex flex-col ${isReversed ? 'lg:flex-row-reverse' : 'lg:flex-row'} items-center gap-12 lg:gap-16`}
     >
-      {/* Visual Side */}
+      {/* Visual Side with Screenshot */}
       <div className="flex-1 w-full">
         <motion.div
-          whileHover={{ scale: 1.02 }}
-          className="relative"
+          whileHover={{ scale: 1.02, rotateY: 5 }}
+          className="relative cursor-pointer group"
+          onClick={() => setIsModalOpen(true)}
         >
           {/* Glow Effect */}
-          <div className="absolute -inset-6 bg-gradient-to-br from-orange-200 to-orange-100 rounded-3xl blur-3xl opacity-30" />
+          <div className="absolute -inset-6 bg-gradient-to-br from-orange-200 to-orange-100 rounded-3xl blur-3xl opacity-30 group-hover:opacity-50 transition-opacity" />
 
-          {/* Card */}
-          <div className="relative bg-gradient-to-br from-white via-orange-50/50 to-orange-100/30 p-12 shadow-2xl rounded-3xl backdrop-blur-sm border border-orange-100">
-            {/* Icon */}
-            <motion.div
-              animate={{
-                y: [0, -10, 0],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: index * 0.5
-              }}
-              className="text-center"
-            >
-              <div className="w-24 h-24 mx-auto bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg mb-4">
-                <step.icon className="w-12 h-12 text-white" />
-              </div>
-            </motion.div>
+          {/* Screenshot Card */}
+          <div className="relative overflow-hidden rounded-3xl shadow-2xl border-4 border-white">
+            <LazyImage
+              src={step.screenshot}
+              alt={`${step.title} screenshot`}
+              className="w-full aspect-[4/3]"
+            />
+
+            {/* Overlay with icon on hover */}
+            <div className="absolute inset-0 bg-orange-600/0 group-hover:bg-orange-600/20 transition-all flex items-center justify-center">
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                whileHover={{ scale: 1, opacity: 1 }}
+                className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg"
+              >
+                <Maximize2 className="w-8 h-8 text-orange-600" />
+              </motion.div>
+            </div>
+
+            {/* Small icon badge in corner */}
+            <div className="absolute top-4 right-4 w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+              <step.icon className="w-6 h-6 text-white" />
+            </div>
           </div>
         </motion.div>
+
+        {/* Image Modal */}
+        <ImageModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          imageSrc={step.screenshot}
+          alt={`${step.title} screenshot`}
+        />
       </div>
 
       {/* Content Side */}

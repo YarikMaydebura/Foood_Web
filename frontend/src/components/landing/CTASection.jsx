@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Play, Sparkles } from 'lucide-react';
+import AnimatedCounter from '../common/AnimatedCounter';
 
 export default function CTASection() {
   return (
@@ -54,7 +55,7 @@ export default function CTASection() {
           className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-sm text-white rounded-full text-sm font-medium mb-8 border border-white/30"
         >
           <Sparkles className="w-4 h-4" />
-          Join 2,000+ Happy Home Cooks
+          Join <AnimatedCounter from={0} to={2000} duration={2.5} className="font-bold" />+ Happy Home Cooks
         </motion.div>
 
         {/* Main Headline */}
@@ -155,8 +156,8 @@ export default function CTASection() {
                 {String.fromCharCode(65 + i)}
               </div>
             ))}
-            <div className="w-12 h-12 bg-white/90 backdrop-blur-sm rounded-full border-4 border-orange-500 flex items-center justify-center font-bold text-orange-600">
-              +2K
+            <div className="w-12 h-12 bg-white/90 backdrop-blur-sm rounded-full border-4 border-orange-500 flex items-center justify-center font-bold text-orange-600 text-xs">
+              +<AnimatedCounter from={0} to={2} duration={2} suffix="K" />
             </div>
           </div>
           <p className="text-white/90 text-lg">
