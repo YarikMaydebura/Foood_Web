@@ -6,6 +6,7 @@ from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.schemas.auth import LoginIn, RegisterIn
 from app.core.security import verify_password, hash_password, create_access_token
+from app.services.starter_recipes import assign_starter_recipes
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -33,6 +34,11 @@ def signup(body: RegisterIn, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Assign 10 starter recipes to new user
+    assign_starter_recipes(db, user, limit=10)
+    db.commit()
+
     return _user_out(user)
 
 @router.post("/login")
