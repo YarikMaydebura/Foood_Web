@@ -400,7 +400,7 @@ PBL_GroupG_Foood/
 | Name  | Role |
 |------|------|
 | Jordan Keiwein Lay | Co-founder, full-stack developer|
-| Maydebura Yaroslav | Coofounder, full-stack developer|
+| Maydebura Yaroslav | Co-founder, full-stack developer|
 
 **Last Updated:** January 2026
 
