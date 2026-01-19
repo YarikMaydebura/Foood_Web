@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.models.recipe import Recipe
 from app.models.recipe_ingredient import RecipeIngredient
 from app.models.tag import Tag
@@ -7,13 +7,29 @@ from app.crud.ingredient import get_or_create_ingredient, get_ingredient
 from app.crud.tag import get_tags_by_ids
 
 
-def list_recipes_by_user(db: Session, user_id: int) -> list[Recipe]:
-    return list(db.scalars(
+def list_recipes_by_user(
+    db: Session,
+    user_id: int,
+    limit: int = 50,
+    offset: int = 0
+) -> tuple[list[Recipe], int]:
+    """List recipes with pagination. Returns (recipes, total_count)."""
+    # Get total count
+    total = db.scalar(
+        select(func.count()).select_from(Recipe).where(Recipe.user_id == user_id)
+    ) or 0
+
+    # Get paginated results
+    recipes = list(db.scalars(
         select(Recipe)
         .where(Recipe.user_id == user_id)
         .options(joinedload(Recipe.tags), joinedload(Recipe.recipe_ingredients))
         .order_by(Recipe.id.desc())
+        .limit(limit)
+        .offset(offset)
     ).unique())
+
+    return recipes, total
 
 
 def get_recipe(db: Session, recipe_id: int) -> Recipe | None:
@@ -151,14 +167,35 @@ def delete_recipe(db: Session, recipe: Recipe) -> None:
     db.commit()
 
 
-def search_recipes(db: Session, user_id: int, query: str) -> list[Recipe]:
-    """Search recipes by title"""
-    return list(db.scalars(
+def search_recipes(
+    db: Session,
+    user_id: int,
+    query: str,
+    limit: int = 50,
+    offset: int = 0
+) -> tuple[list[Recipe], int]:
+    """Search recipes by title with pagination."""
+    # Escape special SQL LIKE characters
+    escaped_query = query.replace("%", r"\%").replace("_", r"\_")
+
+    # Get total count
+    total = db.scalar(
+        select(func.count())
+        .select_from(Recipe)
+        .where(Recipe.user_id == user_id, Recipe.title.ilike(f"%{escaped_query}%"))
+    ) or 0
+
+    # Get paginated results
+    recipes = list(db.scalars(
         select(Recipe)
-        .where(Recipe.user_id == user_id, Recipe.title.ilike(f"%{query}%"))
+        .where(Recipe.user_id == user_id, Recipe.title.ilike(f"%{escaped_query}%"))
         .options(joinedload(Recipe.tags))
         .order_by(Recipe.id.desc())
+        .limit(limit)
+        .offset(offset)
     ).unique())
+
+    return recipes, total
 
 
 def get_recipes_by_tag(db: Session, user_id: int, tag_id: int) -> list[Recipe]:

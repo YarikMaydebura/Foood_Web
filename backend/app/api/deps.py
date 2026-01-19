@@ -6,9 +6,11 @@ from sqlalchemy import select
 
 from app.db.session import SessionLocal
 from app.core.config import settings
+from app.core.security import is_token_blacklisted
 from app.models.user import User
 
 bearer = HTTPBearer()
+
 
 def get_db():
     db = SessionLocal()
@@ -17,16 +19,32 @@ def get_db():
     finally:
         db.close()
 
+
 def get_current_user(
     creds: HTTPAuthorizationCredentials = Depends(bearer),
     db: Session = Depends(get_db),
 ) -> User:
     token = creds.credentials
+
+    # Check if token is blacklisted (logged out)
+    if is_token_blacklisted(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked"
+        )
+
     try:
         payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
         sub = payload.get("sub")
+        token_type = payload.get("type", "access")
+
         if not sub:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+        # Only allow access tokens for API requests
+        if token_type != "access":
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
+
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_current_user
@@ -10,13 +10,22 @@ from app.crud.tag import get_or_create_tag
 router = APIRouter(prefix="/recipes", tags=["recipes"])
 
 
-@router.get("", response_model=list[RecipeListOut])
+@router.get("")
 def list_recipes(
+    limit: int = Query(default=50, ge=1, le=100, description="Items per page"),
+    offset: int = Query(default=0, ge=0, description="Items to skip"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Get all recipes for the current user"""
-    return crud_recipe.list_recipes_by_user(db, current_user.id)
+    """Get all recipes for the current user with pagination"""
+    recipes, total = crud_recipe.list_recipes_by_user(db, current_user.id, limit, offset)
+    return {
+        "items": recipes,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": offset + len(recipes) < total
+    }
 
 
 @router.get("/{recipe_id}", response_model=RecipeOut)
@@ -107,11 +116,20 @@ def delete_recipe(
     return {"ok": True}
 
 
-@router.get("/search/{query}", response_model=list[RecipeListOut])
+@router.get("/search/{query}")
 def search_recipes(
     query: str,
+    limit: int = Query(default=50, ge=1, le=100, description="Items per page"),
+    offset: int = Query(default=0, ge=0, description="Items to skip"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Search recipes by title"""
-    return crud_recipe.search_recipes(db, current_user.id, query)
+    """Search recipes by title with pagination"""
+    recipes, total = crud_recipe.search_recipes(db, current_user.id, query, limit, offset)
+    return {
+        "items": recipes,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "has_more": offset + len(recipes) < total
+    }

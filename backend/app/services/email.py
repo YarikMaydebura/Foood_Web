@@ -2,6 +2,8 @@
 Email service using Resend for sending verification codes.
 """
 import secrets
+import logging
+import os
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
@@ -9,6 +11,11 @@ from sqlalchemy import select, func
 from app.core.config import settings
 from app.models.email_verification import EmailVerificationCode
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
+
+# Check if we're in development mode
+IS_DEVELOPMENT = os.getenv("ENVIRONMENT", "development").lower() == "development"
 
 # Initialize Resend if API key is configured
 RESEND_AVAILABLE = False
@@ -21,7 +28,7 @@ if settings.RESEND_API_KEY:
         resend = resend_module
         RESEND_AVAILABLE = True
     except ImportError:
-        pass
+        logger.warning("Resend package not installed")
 
 
 def generate_verification_code() -> str:
@@ -81,9 +88,14 @@ def send_verification_email(user: User, code: str) -> bool:
     Falls back to logging in development if Resend is not configured.
     """
     if not RESEND_AVAILABLE:
-        # Development fallback - print the code to console
-        print(f"[DEV] Verification code for {user.email}: {code}")
-        return True
+        if IS_DEVELOPMENT:
+            # Only log verification codes in development mode (never in production)
+            logger.warning(f"[DEV MODE] Email service not configured. Verification code: {code}")
+            return True
+        else:
+            # In production, fail if email service is not configured
+            logger.error("Email service not configured in production")
+            return False
 
     html_content = f"""
     <!DOCTYPE html>
@@ -186,7 +198,8 @@ def send_verification_email(user: User, code: str) -> bool:
         })
         return True
     except Exception as e:
-        print(f"Failed to send verification email: {e}")
+        # Log error without exposing sensitive details to users
+        logger.error(f"Failed to send verification email to user_id={user.id}: {type(e).__name__}")
         return False
 
 

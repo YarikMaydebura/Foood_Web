@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 
@@ -8,8 +9,12 @@ from app.schemas.auth import LoginIn, RegisterIn
 from app.schemas.verification import (
     VerifyEmailIn, ResendCodeIn, VerificationResponse, SignupResponse
 )
-from app.core.security import verify_password, hash_password, create_access_token
+from app.core.security import (
+    verify_password, hash_password, create_access_token,
+    create_refresh_token, decode_token, blacklist_token
+)
 from app.core.config import settings
+from app.core.rate_limit import login_rate_limiter
 from app.services.email import (
     create_verification_code, send_verification_email,
     verify_code, count_recent_codes
@@ -19,8 +24,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _user_out(user: User) -> dict:
-    """Generate auth response with JWT token."""
-    access_token = create_access_token(user.email)
+    """Generate auth response with access and refresh tokens."""
     return {
         "user": {
             "id": user.id,
@@ -29,7 +33,10 @@ def _user_out(user: User) -> dict:
             "email_verified": user.email_verified,
             "onboarding_completed": user.onboarding_completed
         },
-        "access_token": access_token
+        "access_token": create_access_token(user.email),
+        "refresh_token": create_refresh_token(user.email),
+        "token_type": "bearer",
+        "expires_in": 900  # 15 minutes in seconds
     }
 
 
@@ -38,10 +45,22 @@ def signup(body: RegisterIn, db: Session = Depends(get_db)):
     """
     Register a new user.
     Creates an unverified user and sends a verification code.
+    Uses silent success pattern to prevent email enumeration.
     """
     exists = db.scalar(select(User).where(User.email == body.email))
+
     if exists:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        # Return same response to prevent email enumeration
+        # If email exists and unverified, resend code
+        if not exists.email_verified:
+            code = create_verification_code(db, exists)
+            send_verification_email(exists, code.code)
+        # Always return success message (don't reveal if email exists)
+        return SignupResponse(
+            message="If this email is not registered, you will receive a verification code.",
+            email=body.email,
+            requires_verification=True
+        )
 
     # Create unverified user (no recipes assigned yet)
     user = User(
@@ -60,7 +79,7 @@ def signup(body: RegisterIn, db: Session = Depends(get_db)):
     send_verification_email(user, code.code)
 
     return SignupResponse(
-        message="Account created! Please check your email for a verification code.",
+        message="If this email is not registered, you will receive a verification code.",
         email=user.email,
         requires_verification=True
     )
@@ -125,16 +144,33 @@ def resend_verification_code(body: ResendCodeIn, db: Session = Depends(get_db)):
 def login(body: LoginIn, db: Session = Depends(get_db)):
     """
     Login user. Requires verified email.
+    Rate limited to prevent brute force attacks.
     """
+    # Check if blocked due to too many attempts
+    if login_rate_limiter.is_blocked(body.email):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed login attempts. Please try again in 15 minutes."
+        )
+
     user = db.scalar(select(User).where(User.email == body.email))
     if not user or not verify_password(body.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        # Record failed attempt
+        login_rate_limiter.record_attempt(body.email)
+        remaining = login_rate_limiter.get_remaining_attempts(body.email)
+        raise HTTPException(
+            status_code=401,
+            detail=f"Invalid credentials. {remaining} attempts remaining."
+        )
 
     if not user.email_verified:
         raise HTTPException(
             status_code=403,
             detail="Please verify your email before logging in"
         )
+
+    # Reset rate limiter on successful login
+    login_rate_limiter.reset(body.email)
 
     return _user_out(user)
 
@@ -151,3 +187,47 @@ def get_me(current_user: User = Depends(get_current_user)):
             "onboarding_completed": current_user.onboarding_completed
         }
     }
+
+
+@router.post("/refresh")
+def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
+    """
+    Exchange a refresh token for a new access token.
+    """
+    payload = decode_token(refresh_token)
+
+    if not payload:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    if payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid token type")
+
+    email = payload.get("sub")
+    if not email:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    user = db.scalar(select(User).where(User.email == email))
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    # Return new tokens
+    return {
+        "access_token": create_access_token(user.email),
+        "refresh_token": create_refresh_token(user.email),
+        "token_type": "bearer",
+        "expires_in": 900
+    }
+
+
+@router.post("/logout")
+def logout(
+    current_user: User = Depends(get_current_user),
+    creds: HTTPAuthorizationCredentials = Depends(HTTPBearer()),
+):
+    """
+    Logout user by blacklisting their current access token.
+    """
+    token = creds.credentials
+    blacklist_token(token)
+
+    return {"message": "Successfully logged out"}
