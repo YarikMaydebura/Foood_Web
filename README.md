@@ -397,17 +397,10 @@ PBL_GroupG_Foood/
 
 ## Team
 
-| Name | Student ID | Role |
-|------|------------|------|
-| Kanato Nishiura | 2600240283-0 |
-| Jordan Keiwein Lay | 2600240467-1 |
-| Maydebura Yaroslav | 2600240001-3 |
-| DENG JIAJUN | 260024****** |
-| Islam Md Refadul | 2600240464-7 |
-
-**Course:** PBL 4
-
-**Institution:** Ritsumeikan University
+| Name  | Role |
+|------|------|
+| Jordan Keiwein Lay | Co-founder, full-stack developer|
+| Maydebura Yaroslav | Coofounder, full-stack developer|
 
 **Last Updated:** January 2026
 
