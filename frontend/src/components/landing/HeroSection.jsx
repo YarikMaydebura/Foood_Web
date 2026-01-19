@@ -7,18 +7,19 @@ export default function HeroSection() {
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Full-Bleed Food Photography Background */}
       <div className="absolute inset-0">
-        <div className="w-full h-full bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600" />
-
-        {/* Diagonal Overlay Gradient */}
-        <div
-          className="absolute inset-0 bg-gradient-to-br from-orange-600/90 via-orange-500/80 to-transparent"
-          style={{ clipPath: 'polygon(0 0, 100% 0, 100% 85%, 0 100%)' }}
+        {/* Background Image */}
+        <img
+          src="https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=1920&q=80"
+          alt="Fresh ingredients"
+          className="w-full h-full object-cover"
         />
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-orange-600/95 via-orange-500/90 to-orange-400/80" />
       </div>
 
-      {/* Floating Background Elements */}
+      {/* Floating Food Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Floating Ingredient 1 */}
+        {/* Floating Tomato */}
         <motion.div
           animate={{
             y: [0, -30, 0],
@@ -29,10 +30,16 @@ export default function HeroSection() {
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute top-20 right-20 w-24 h-24 bg-white/10 rounded-full backdrop-blur-sm"
-        />
+          className="absolute top-20 right-20 w-28 h-28 rounded-full overflow-hidden shadow-2xl border-4 border-white/20"
+        >
+          <img
+            src="https://images.unsplash.com/photo-1546470427-e26264be0b0d?w=200&q=80"
+            alt="Fresh tomatoes"
+            className="w-full h-full object-cover"
+          />
+        </motion.div>
 
-        {/* Floating Ingredient 2 */}
+        {/* Floating Herbs */}
         <motion.div
           animate={{
             y: [0, -20, 0],
@@ -44,10 +51,16 @@ export default function HeroSection() {
             ease: "easeInOut",
             delay: 0.5
           }}
-          className="absolute bottom-32 left-16 w-32 h-32 bg-yellow-400/10 rounded-full backdrop-blur-sm"
-        />
+          className="absolute bottom-32 left-16 w-36 h-36 rounded-full overflow-hidden shadow-2xl border-4 border-white/20"
+        >
+          <img
+            src="https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=200&q=80"
+            alt="Fresh herbs"
+            className="w-full h-full object-cover"
+          />
+        </motion.div>
 
-        {/* Floating Ingredient 3 */}
+        {/* Floating Lemon */}
         <motion.div
           animate={{
             y: [0, -25, 0],
@@ -59,8 +72,35 @@ export default function HeroSection() {
             ease: "easeInOut",
             delay: 1
           }}
-          className="absolute top-1/3 right-1/4 w-20 h-20 bg-white/10 rounded-full backdrop-blur-sm"
-        />
+          className="absolute top-1/3 right-1/4 w-24 h-24 rounded-full overflow-hidden shadow-2xl border-4 border-white/20"
+        >
+          <img
+            src="https://images.unsplash.com/photo-1590502593747-42a996133562?w=200&q=80"
+            alt="Fresh lemons"
+            className="w-full h-full object-cover"
+          />
+        </motion.div>
+
+        {/* Floating Avocado */}
+        <motion.div
+          animate={{
+            y: [0, -15, 0],
+            rotate: [-5, 5, -5],
+          }}
+          transition={{
+            duration: 4.5,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 0.8
+          }}
+          className="absolute bottom-1/4 right-16 w-20 h-20 rounded-full overflow-hidden shadow-2xl border-4 border-white/20 hidden lg:block"
+        >
+          <img
+            src="https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=200&q=80"
+            alt="Avocado"
+            className="w-full h-full object-cover"
+          />
+        </motion.div>
       </div>
 
       {/* Content */}
@@ -83,7 +123,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="font-playfair text-6xl sm:text-7xl lg:text-8xl xl:text-9xl font-black text-white mb-6 leading-none"
+            className="font-playfair text-6xl sm:text-7xl lg:text-8xl xl:text-9xl font-black text-white mb-6 leading-none drop-shadow-lg"
           >
             Never Wonder<br />
             <span className="text-yellow-butter">What's for Dinner</span>
@@ -94,7 +134,7 @@ export default function HeroSection() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
-            className="text-xl sm:text-2xl text-white/90 mb-10 max-w-2xl leading-relaxed"
+            className="text-xl sm:text-2xl text-white/90 mb-10 max-w-2xl leading-relaxed drop-shadow"
           >
             Organize recipes, plan weekly meals, and generate smart shopping lists. Your all-in-one meal planning companion.
           </motion.p>
@@ -112,7 +152,7 @@ export default function HeroSection() {
                 whileTap={{ scale: 0.95 }}
                 className="px-8 py-4 bg-white text-orange-600 font-bold rounded-xl shadow-2xl hover:shadow-white/20 transition-all flex items-center gap-2 group text-lg"
               >
-                Start Free Trial
+                Get Started Free
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </motion.button>
             </Link>
@@ -132,11 +172,11 @@ export default function HeroSection() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.8 }}
-            className="mt-12 flex flex-wrap gap-6 sm:gap-8 text-white/80"
+            className="mt-12 flex flex-wrap gap-6 sm:gap-8 text-white/90"
           >
             <div className="flex items-center gap-2">
               <span className="text-2xl">✓</span>
-              <span className="text-sm sm:text-base">7-day free trial</span>
+              <span className="text-sm sm:text-base font-medium">100% Free Forever</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-2xl">✓</span>
@@ -144,7 +184,7 @@ export default function HeroSection() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-2xl">✓</span>
-              <span className="text-sm sm:text-base">Cancel anytime</span>
+              <span className="text-sm sm:text-base">Unlimited recipes</span>
             </div>
           </motion.div>
         </div>

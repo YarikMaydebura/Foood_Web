@@ -8,48 +8,54 @@ const features = [
     icon: BookOpen,
     title: 'Smart Recipe Management',
     description: 'Store unlimited recipes from any source. Import from websites, add your own creations, or browse our curated collection. Organize with tags, categories, and custom collections that work for you.',
-    bgColor: 'from-orange-500 to-orange-600',
-    iconBg: 'bg-white/20'
+    bgColor: 'from-orange-600/90 to-orange-700/90',
+    iconBg: 'bg-white/20',
+    image: 'https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=800&q=80'
   },
   {
     span: 'col-span-12 lg:col-span-5',
     icon: CalendarDays,
     title: 'Weekly Meal Planner',
     description: 'Drag and drop recipes onto your calendar. Get smart suggestions based on your preferences or let us randomize for variety.',
-    bgColor: 'from-yellow-warm to-orange-400',
-    iconBg: 'bg-white/20'
+    bgColor: 'from-amber-600/90 to-orange-600/90',
+    iconBg: 'bg-white/20',
+    image: 'https://images.unsplash.com/photo-1543352634-a1c51d9f1fa7?w=800&q=80'
   },
   {
     span: 'col-span-12 lg:col-span-5',
     icon: ShoppingBag,
     title: 'Auto Shopping Lists',
     description: 'Generate grocery lists instantly from your meal plan. Organized by category, with smart consolidation of duplicate ingredients.',
-    bgColor: 'from-terracotta to-orange-500',
-    iconBg: 'bg-white/20'
+    bgColor: 'from-orange-700/90 to-red-700/90',
+    iconBg: 'bg-white/20',
+    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80'
   },
   {
     span: 'col-span-12 lg:col-span-7',
     icon: Share2,
     title: 'Share & Collaborate',
     description: 'Share your favorite recipes with family and friends. Build shared meal plans for households. Export recipes in multiple formats.',
-    bgColor: 'from-sage to-orange-400',
-    iconBg: 'bg-white/20'
+    bgColor: 'from-emerald-700/90 to-teal-700/90',
+    iconBg: 'bg-white/20',
+    image: 'https://images.unsplash.com/photo-1556911220-bff31c812dba?w=800&q=80'
   },
   {
     span: 'col-span-12 lg:col-span-6',
     icon: Clock,
     title: 'Save Time & Money',
     description: 'Stop wondering what to cook. Reduce food waste with better planning. Stick to your budget with organized shopping lists.',
-    bgColor: 'from-orange-400 to-yellow-warm',
-    iconBg: 'bg-white/20'
+    bgColor: 'from-orange-600/90 to-amber-600/90',
+    iconBg: 'bg-white/20',
+    image: 'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=800&q=80'
   },
   {
     span: 'col-span-12 lg:col-span-6',
     icon: Shield,
     title: 'Your Data, Secured',
     description: 'All your recipes and meal plans are safely stored and backed up. Access from any device, anytime, anywhere.',
-    bgColor: 'from-orange-600 to-orange-700',
-    iconBg: 'bg-white/20'
+    bgColor: 'from-slate-700/90 to-slate-800/90',
+    iconBg: 'bg-white/20',
+    image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80'
   },
 ];
 
@@ -70,33 +76,38 @@ const FeatureCard = ({ feature, index }) => {
       <motion.div
         whileHover={{ scale: 1.02, y: -5 }}
         transition={{ duration: 0.3 }}
-        className={`relative h-full min-h-[350px] rounded-3xl overflow-hidden shadow-2xl bg-gradient-to-br ${feature.bgColor} p-8 lg:p-12 group cursor-pointer`}
+        className="relative h-full min-h-[350px] rounded-3xl overflow-hidden shadow-2xl group cursor-pointer"
       >
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-5">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23FFFFFF' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-          }} />
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <img
+            src={feature.image}
+            alt={feature.title}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          />
+          {/* Dark Gradient Overlay for text readability */}
+          <div className={`absolute inset-0 bg-gradient-to-br ${feature.bgColor}`} />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
         </div>
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col h-full">
+        <div className="relative z-10 flex flex-col h-full p-8 lg:p-12">
           {/* Icon */}
           <motion.div
             whileHover={{ rotate: 5, scale: 1.1 }}
             transition={{ type: 'spring', stiffness: 400 }}
-            className={`w-16 h-16 ${feature.iconBg} backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6 shadow-lg`}
+            className={`w-16 h-16 ${feature.iconBg} backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6 shadow-lg border border-white/20`}
           >
-            <feature.icon className="w-8 h-8 text-white" />
+            <feature.icon className="w-8 h-8 text-white drop-shadow" />
           </motion.div>
 
           {/* Title */}
-          <h3 className="font-playfair text-3xl lg:text-4xl font-bold text-white mb-4">
+          <h3 className="font-playfair text-3xl lg:text-4xl font-bold text-white mb-4 drop-shadow-lg">
             {feature.title}
           </h3>
 
           {/* Description */}
-          <p className="text-white/90 text-lg leading-relaxed flex-grow">
+          <p className="text-white/95 text-lg leading-relaxed flex-grow drop-shadow">
             {feature.description}
           </p>
 
@@ -105,12 +116,12 @@ const FeatureCard = ({ feature, index }) => {
             initial={{ scaleX: 0 }}
             animate={inView ? { scaleX: 1 } : {}}
             transition={{ delay: index * 0.1 + 0.5, duration: 0.6 }}
-            className="h-1 w-24 bg-white/40 rounded-full mt-6 origin-left"
+            className="h-1 w-24 bg-white/60 rounded-full mt-6 origin-left"
           />
         </div>
 
         {/* Hover Glow Effect */}
-        <div className="absolute -inset-1 bg-gradient-to-r from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
+        <div className="absolute -inset-1 bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 blur-xl" />
       </motion.div>
     </motion.div>
   );
