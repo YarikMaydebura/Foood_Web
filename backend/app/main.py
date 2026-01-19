@@ -16,6 +16,8 @@ from app.models.recipe_ingredient import RecipeIngredient  # noqa
 from app.models.recipe_tag import recipe_tags  # noqa
 from app.models.shopping_list import ShoppingList  # noqa
 from app.models.shopping_list_item import ShoppingListItem  # noqa
+from app.models.email_verification import EmailVerificationCode  # noqa
+from app.models.user_preference import UserPreference  # noqa
 
 # Import routers
 from app.api.routes.auth import router as auth_router
@@ -24,6 +26,7 @@ from app.api.routes.meal_plan import router as meal_plan_router
 from app.api.routes.ingredients import router as ingredients_router
 from app.api.routes.tags import router as tags_router
 from app.api.routes.shopping_lists import router as shopping_lists_router
+from app.api.routes.onboarding import router as onboarding_router
 
 app = FastAPI(title="Recipe Manager API", version="2.0.0")
 
@@ -45,6 +48,7 @@ app.include_router(meal_plan_router)
 app.include_router(ingredients_router)
 app.include_router(tags_router)
 app.include_router(shopping_lists_router)
+app.include_router(onboarding_router)
 
 
 @app.get("/health")

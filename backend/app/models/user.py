@@ -13,6 +13,8 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    email_verified: Mapped[bool] = mapped_column(default=False, nullable=False)
+    onboarding_completed: Mapped[bool] = mapped_column(default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # Relationships
@@ -23,4 +25,10 @@ class User(Base):
     )
     shopping_lists: Mapped[list["ShoppingList"]] = relationship(
         "ShoppingList", back_populates="user", cascade="all, delete-orphan"
+    )
+    verification_codes: Mapped[list["EmailVerificationCode"]] = relationship(
+        "EmailVerificationCode", back_populates="user", cascade="all, delete-orphan"
+    )
+    preferences: Mapped[list["UserPreference"]] = relationship(
+        "UserPreference", back_populates="user", cascade="all, delete-orphan"
     )
