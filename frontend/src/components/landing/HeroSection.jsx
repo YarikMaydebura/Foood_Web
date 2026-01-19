@@ -30,16 +30,16 @@ export default function HeroSection() {
             repeat: Infinity,
             ease: "easeInOut"
           }}
-          className="absolute top-20 right-20 w-28 h-28 rounded-full overflow-hidden shadow-2xl border-4 border-white/20"
+          className="absolute top-20 right-20 w-28 h-28 rounded-full overflow-hidden shadow-2xl border-4 border-white/20 bg-red-500"
         >
           <img
-            src="https://images.unsplash.com/photo-1546470427-e26264be0b0d?w=200&q=80"
-            alt="Fresh tomatoes"
+            src="https://images.unsplash.com/photo-1561136594-7f68413baa99?w=200&q=80"
+            alt=""
             className="w-full h-full object-cover"
           />
         </motion.div>
 
-        {/* Floating Herbs */}
+        {/* Floating Herbs/Vegetables */}
         <motion.div
           animate={{
             y: [0, -20, 0],
@@ -51,11 +51,11 @@ export default function HeroSection() {
             ease: "easeInOut",
             delay: 0.5
           }}
-          className="absolute bottom-32 left-16 w-36 h-36 rounded-full overflow-hidden shadow-2xl border-4 border-white/20"
+          className="absolute bottom-32 left-16 w-36 h-36 rounded-full overflow-hidden shadow-2xl border-4 border-white/20 bg-green-600"
         >
           <img
-            src="https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=200&q=80"
-            alt="Fresh herbs"
+            src="https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&q=80"
+            alt=""
             className="w-full h-full object-cover"
           />
         </motion.div>
@@ -72,11 +72,11 @@ export default function HeroSection() {
             ease: "easeInOut",
             delay: 1
           }}
-          className="absolute top-1/3 right-1/4 w-24 h-24 rounded-full overflow-hidden shadow-2xl border-4 border-white/20"
+          className="absolute top-1/3 right-1/4 w-24 h-24 rounded-full overflow-hidden shadow-2xl border-4 border-white/20 bg-yellow-400"
         >
           <img
-            src="https://images.unsplash.com/photo-1590502593747-42a996133562?w=200&q=80"
-            alt="Fresh lemons"
+            src="https://images.unsplash.com/photo-1582087463261-ddea03f80f5d?w=200&q=80"
+            alt=""
             className="w-full h-full object-cover"
           />
         </motion.div>
@@ -93,11 +93,11 @@ export default function HeroSection() {
             ease: "easeInOut",
             delay: 0.8
           }}
-          className="absolute bottom-1/4 right-16 w-20 h-20 rounded-full overflow-hidden shadow-2xl border-4 border-white/20 hidden lg:block"
+          className="absolute bottom-1/4 right-16 w-20 h-20 rounded-full overflow-hidden shadow-2xl border-4 border-white/20 hidden lg:block bg-green-500"
         >
           <img
-            src="https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=200&q=80"
-            alt="Avocado"
+            src="https://images.unsplash.com/photo-1519162808019-7de1683fa2ad?w=200&q=80"
+            alt=""
             className="w-full h-full object-cover"
           />
         </motion.div>
