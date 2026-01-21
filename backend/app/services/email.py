@@ -203,10 +203,12 @@ def send_verification_email(user: User, code: str) -> bool:
         return False
 
 
-def verify_code(db: Session, user: User, code: str) -> tuple[bool, str]:
+def verify_code(db: Session, user: User, code: str, mark_verified: bool = True) -> tuple[bool, str]:
     """
     Verify a code for a user.
     Returns (success, message) tuple.
+    If mark_verified=True (default), marks user's email as verified.
+    If mark_verified=False (for password reset), just validates the code.
     """
     verification = get_active_verification_code(db, user.id)
 
@@ -222,9 +224,137 @@ def verify_code(db: Session, user: User, code: str) -> tuple[bool, str]:
         remaining = settings.MAX_VERIFICATION_ATTEMPTS - verification.attempts
         return False, f"Invalid code. {remaining} attempts remaining."
 
-    # Success - mark user as verified and delete the code
-    user.email_verified = True
+    # Success - mark user as verified (if applicable) and delete the code
+    if mark_verified:
+        user.email_verified = True
     db.delete(verification)
     db.commit()
 
-    return True, "Email verified successfully!"
+    return True, "Code verified successfully!"
+
+
+def send_password_reset_email(user: User, code: str) -> bool:
+    """
+    Send password reset email via Resend.
+    Returns True if sent successfully, False otherwise.
+    Falls back to logging in development if Resend is not configured.
+    """
+    if not RESEND_AVAILABLE:
+        if IS_DEVELOPMENT:
+            logger.warning(f"[DEV MODE] Email service not configured. Password reset code: {code}")
+            return True
+        else:
+            logger.error("Email service not configured in production")
+            return False
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; background-color: #f9fafb; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f9fafb;">
+            <tr>
+                <td align="center" style="padding: 40px 20px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 500px; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+
+                        <!-- Header with Logo -->
+                        <tr>
+                            <td style="padding: 40px 40px 20px 40px; text-align: center;">
+                                <div style="display: inline-block; background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); padding: 16px 24px; border-radius: 12px;">
+                                    <span style="font-size: 32px; font-weight: bold; color: #ffffff; letter-spacing: -1px;">Foood</span>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Reset Message -->
+                        <tr>
+                            <td style="padding: 20px 40px 10px 40px; text-align: center;">
+                                <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #111827;">
+                                    Reset Your Password
+                                </h1>
+                            </td>
+                        </tr>
+
+                        <!-- Subtitle -->
+                        <tr>
+                            <td style="padding: 10px 40px 30px 40px; text-align: center;">
+                                <p style="margin: 0; font-size: 16px; color: #6b7280; line-height: 1.5;">
+                                    Hi {user.name}, use the code below to reset your password
+                                </p>
+                            </td>
+                        </tr>
+
+                        <!-- Reset Code Box -->
+                        <tr>
+                            <td style="padding: 0 40px 30px 40px;">
+                                <div style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border: 2px solid #f97316; border-radius: 12px; padding: 24px; text-align: center;">
+                                    <p style="margin: 0 0 8px 0; font-size: 12px; color: #ea580c; text-transform: uppercase; letter-spacing: 2px; font-weight: 600;">
+                                        Password Reset Code
+                                    </p>
+                                    <p style="margin: 0; font-size: 36px; font-weight: 700; color: #ea580c; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                                        {code}
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Timer Warning -->
+                        <tr>
+                            <td style="padding: 0 40px 30px 40px; text-align: center;">
+                                <div style="display: inline-block; background-color: #fef3c7; padding: 12px 20px; border-radius: 8px;">
+                                    <span style="font-size: 14px; color: #92400e;">
+                                        ⏱️ This code expires in <strong>{settings.VERIFICATION_CODE_EXPIRY_MINUTES} minutes</strong>
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Security Notice -->
+                        <tr>
+                            <td style="padding: 0 40px 20px 40px; text-align: center;">
+                                <div style="background-color: #fef2f2; padding: 12px 20px; border-radius: 8px; border: 1px solid #fecaca;">
+                                    <span style="font-size: 14px; color: #991b1b;">
+                                        🔒 If you didn't request this, please ignore this email. Your password won't be changed.
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Divider -->
+                        <tr>
+                            <td style="padding: 0 40px;">
+                                <div style="height: 1px; background-color: #e5e7eb;"></div>
+                            </td>
+                        </tr>
+
+                        <!-- Footer -->
+                        <tr>
+                            <td style="padding: 30px 40px 40px 40px; text-align: center;">
+                                <p style="margin: 0; font-size: 13px; color: #9ca3af;">
+                                    © 2025 Foood. All rights reserved.
+                                </p>
+                            </td>
+                        </tr>
+
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    """
+
+    try:
+        resend.Emails.send({
+            "from": settings.FROM_EMAIL,
+            "to": [user.email],
+            "subject": "🔑 Reset your Foood password",
+            "html": html_content
+        })
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send password reset email to user_id={user.id}: {type(e).__name__}")
+        return False

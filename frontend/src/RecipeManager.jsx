@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import {
   Book,
   Plus,
@@ -1323,129 +1324,6 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
   );
 };
 
-// Styling changes
-const AuthScreen = ({ onAuth }) => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  const validateForm = () => {
-    if (!email || !password) {
-      setError("Email and password are required");
-      return false;
-    }
-    if (!isLogin && !name) {
-      setError("Name is required");
-      return false;
-    }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return false;
-    }
-    if (!email.includes("@")) {
-      setError("Please enter a valid email");
-      return false;
-    }
-    return true;
-  };
-
-  const handleSubmit = async () => {
-    setError("");
-    if (!validateForm()) return;
-
-    setLoading(true);
-    try {
-      if (isLogin) {
-        const result = await api.login(email, password);
-        if (result.error) setError(result.error);
-        else onAuth(result.user);
-      } else {
-        const result = await api.signup(name, email, password);
-        if (result.error) setError(result.error);
-        else onAuth(result.user);
-      }
-    } catch (err) {
-      setError("Connection error. Please check if the backend is running.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-[#F5EFE6] flex items-center justify-center p-4">
-      <div className="bg-[#D5D5D5] rounded-3xl shadow-xl p-6 sm:p-12 w-full max-w-md">
-        <div className="flex items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
-          <Book className="w-10 h-10 sm:w-12 sm:h-12 text-orange-500" />
-          <h1 className="text-2xl sm:text-3xl font-bold text-black">Recipe Manager</h1>
-        </div>
-
-        <h2 className="text-xl sm:text-2xl font-normal text-black mb-6 sm:mb-8 text-center">
-          {isLogin ? "Welcome" : "Create Account"}
-        </h2>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-            {error}
-          </div>
-        )}
-
-        <div className="space-y-4">
-          {!isLogin && (
-            <input
-              type="text"
-              placeholder="Full Name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-400"
-            />
-          )}
-
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-400"
-          />
-
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent text-gray-900 placeholder-gray-400"
-          />
-
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full bg-orange-500 text-white py-3 rounded-xl font-semibold hover:bg-orange-600 transition disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md"
-          >
-            {loading ? "Please wait..." : isLogin ? "Sign In" : "Sign Up"}
-          </button>
-        </div>
-
-        <p className="mt-6 text-center text-gray-700">
-          {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <button
-            onClick={() => {
-              setIsLogin(!isLogin);
-              setError("");
-            }}
-            className="text-orange-500 font-semibold hover:text-orange-600 transition"
-          >
-            {isLogin ? "Sign up" : "Sign in"}
-          </button>
-        </p>
-      </div>
-    </div>
-  );
-};
-
 const RecipeManager = () => {
   const [user, setUser] = useState(null);
 
@@ -1936,7 +1814,8 @@ const RecipeManager = () => {
     }
   });
 
-  if (!user) return <AuthScreen onAuth={setUser} />;
+  // Redirect to new auth flow if not authenticated
+  if (!user) return <Navigate to="/auth/login" replace />;
 
   // Layout updated to match wireframe design
   return (

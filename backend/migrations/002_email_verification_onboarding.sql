@@ -1,6 +1,16 @@
 -- Migration: Add email verification and onboarding support
 -- Run this after 001_initial_schema.sql
 
+-- Add name column to users table (required for new signups)
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+
+-- Set default name for existing users (use email prefix)
+UPDATE users SET name = split_part(email, '@', 1) WHERE name IS NULL;
+
+-- Make name NOT NULL after setting defaults
+ALTER TABLE users ALTER COLUMN name SET NOT NULL;
+
 -- Add new columns to users table
 ALTER TABLE users
 ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE;
