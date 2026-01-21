@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, ChefHat, Check, X } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Check, X } from 'lucide-react';
+import Logo from '../common/Logo';
 
 export default function SignupForm({ onSuccess, onSwitchToLogin, api }) {
   const [name, setName] = useState('');
@@ -104,7 +105,7 @@ export default function SignupForm({ onSuccess, onSwitchToLogin, api }) {
           transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
           className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-lg mb-4"
         >
-          <ChefHat className="w-8 h-8 text-white" />
+          <Logo className="w-8 h-8 text-white" />
         </motion.div>
         <h1 className="font-playfair text-3xl font-bold text-gray-800 mb-2">Create Account</h1>
         <p className="text-gray-600">Join Foood and start planning meals</p>

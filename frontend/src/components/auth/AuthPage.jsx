@@ -10,6 +10,21 @@ import OnboardingBubbles from './OnboardingBubbles';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
+// Helper to extract error message from API response
+const getErrorMessage = (detail, fallback) => {
+  if (!detail) return fallback;
+  // If detail is a string, return it directly
+  if (typeof detail === 'string') return detail;
+  // If detail is an array (Pydantic validation errors), extract the first message
+  if (Array.isArray(detail) && detail.length > 0) {
+    const firstError = detail[0];
+    if (firstError.msg) return firstError.msg;
+  }
+  // If detail is an object with a message property
+  if (typeof detail === 'object' && detail.msg) return detail.msg;
+  return fallback;
+};
+
 // Auth API functions
 export const authApi = {
   login: async (email, password) => {
@@ -20,7 +35,7 @@ export const authApi = {
         body: JSON.stringify({ email, password }),
       });
       const data = await response.json();
-      if (!response.ok) return { error: data.detail || "Login failed" };
+      if (!response.ok) return { error: getErrorMessage(data.detail, "Login failed") };
       if (data.access_token) {
         localStorage.setItem("authToken", data.access_token);
       }
@@ -38,7 +53,7 @@ export const authApi = {
         body: JSON.stringify({ name, email, password }),
       });
       const data = await response.json();
-      if (!response.ok) return { error: data.detail || "Signup failed" };
+      if (!response.ok) return { error: getErrorMessage(data.detail, "Signup failed") };
       return data;
     } catch (err) {
       return { error: "Network error" };
@@ -53,7 +68,7 @@ export const authApi = {
         body: JSON.stringify({ email, code }),
       });
       const data = await response.json();
-      if (!response.ok) return { error: data.detail || "Verification failed" };
+      if (!response.ok) return { error: getErrorMessage(data.detail, "Verification failed") };
       return data;
     } catch (err) {
       return { error: "Network error" };
@@ -68,7 +83,7 @@ export const authApi = {
         body: JSON.stringify({ email }),
       });
       const data = await response.json();
-      if (!response.ok) return { error: data.detail || "Failed to resend code" };
+      if (!response.ok) return { error: getErrorMessage(data.detail, "Failed to resend code") };
       return data;
     } catch (err) {
       return { error: "Network error" };
@@ -83,7 +98,7 @@ export const authApi = {
         body: JSON.stringify({ email }),
       });
       const data = await response.json();
-      if (!response.ok) return { error: data.detail || "Request failed" };
+      if (!response.ok) return { error: getErrorMessage(data.detail, "Request failed") };
       return data;
     } catch (err) {
       return { error: "Network error" };
@@ -98,7 +113,7 @@ export const authApi = {
         body: JSON.stringify({ email, code, new_password: newPassword }),
       });
       const data = await response.json();
-      if (!response.ok) return { error: data.detail || "Reset failed" };
+      if (!response.ok) return { error: getErrorMessage(data.detail, "Reset failed") };
       return data;
     } catch (err) {
       return { error: "Network error" };
@@ -120,7 +135,7 @@ export const authApi = {
         }),
       });
       const data = await response.json();
-      if (!response.ok) return { error: data.detail || "Onboarding failed" };
+      if (!response.ok) return { error: getErrorMessage(data.detail, "Onboarding failed") };
       return data;
     } catch (err) {
       return { error: "Network error" };
@@ -138,7 +153,7 @@ export const authApi = {
         },
       });
       const data = await response.json();
-      if (!response.ok) return { error: data.detail || "Skip failed" };
+      if (!response.ok) return { error: getErrorMessage(data.detail, "Skip failed") };
       return data;
     } catch (err) {
       return { error: "Network error" };
@@ -153,7 +168,7 @@ export const authApi = {
         body: JSON.stringify({ email, password }),
       });
       const data = await response.json();
-      if (!response.ok) return { error: data.detail || "Login failed" };
+      if (!response.ok) return { error: getErrorMessage(data.detail, "Login failed") };
       if (data.access_token) {
         localStorage.setItem("authToken", data.access_token);
       }

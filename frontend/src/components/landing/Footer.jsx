@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ChefHat, Facebook, Twitter, Instagram, Mail, Heart } from 'lucide-react';
+import { Facebook, Twitter, Instagram, Mail, Heart } from 'lucide-react';
+import Logo from '../common/Logo';
 
 const footerLinks = {
   product: [
@@ -68,7 +69,7 @@ export default function Footer() {
           <div className="lg:col-span-4">
             <Link to="/" className="flex items-center gap-3 mb-4 group">
               <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                <ChefHat className="w-7 h-7 text-white" />
+                <Logo className="w-7 h-7 text-white" />
               </div>
               <span className="font-playfair text-3xl font-bold text-white">
                 Foood
