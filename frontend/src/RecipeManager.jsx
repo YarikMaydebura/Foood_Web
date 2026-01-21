@@ -1326,6 +1326,7 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
 
 const RecipeManager = () => {
   const [user, setUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   const [recipes, setRecipes] = useState([]);
   const [mealPlan, setMealPlan] = useState({});
@@ -1361,12 +1362,13 @@ const RecipeManager = () => {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem("authToken");
-      if (token && !user) {
+      if (token) {
         const result = await api.getCurrentUser();
         if (!result.error && result.user) {
           setUser(result.user);
         }
       }
+      setAuthChecked(true);
     };
     checkAuth();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1814,7 +1816,19 @@ const RecipeManager = () => {
     }
   });
 
-  // Redirect to new auth flow if not authenticated
+  // Show loading while checking auth
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-[#FFF8E8] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-orange-500/30 border-t-orange-500 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to auth flow if not authenticated
   if (!user) return <Navigate to="/auth/login" replace />;
 
   // Layout updated to match wireframe design

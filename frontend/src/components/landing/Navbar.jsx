@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChefHat, Menu, X, ArrowRight } from 'lucide-react';
+import { Menu, X, ArrowRight } from 'lucide-react';
+import Logo from '../common/Logo';
 
 const navLinks = [
   { name: 'Features', href: '#features' },
@@ -53,7 +54,7 @@ export default function Navbar() {
                 transition={{ type: 'spring', stiffness: 400 }}
                 className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm"
               >
-                <ChefHat className="w-6 h-6 text-white" />
+                <Logo className="w-6 h-6 text-white" />
               </motion.div>
               <span className="font-playfair text-2xl font-bold text-white group-hover:text-yellow-butter transition-colors">
                 Foood
