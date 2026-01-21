@@ -1441,7 +1441,7 @@ const RecipeManager = () => {
 
     const result = await api.getRecipes();
     if (result.error) setError(result.error);
-    else setRecipes(result.recipes || result);
+    else setRecipes(result.items || result.recipes || []);
 
     setLoading(false);
   };
