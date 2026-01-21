@@ -6,7 +6,8 @@ from typing import Optional
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.recipe import Recipe
-from app.models.ingredient import Ingredient, RecipeIngredient
+from app.models.ingredient import Ingredient
+from app.models.recipe_ingredient import RecipeIngredient
 from app.models.tag import Tag, recipe_tags
 from app.schemas.recipe import RecipeOut, LibraryRecipeOut
 from app.crud.tag import get_or_create_tag
