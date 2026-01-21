@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
-from app.schemas.auth import LoginIn, RegisterIn
+from app.schemas.auth import LoginIn, RegisterIn, ForgotPasswordIn, ResetPasswordIn, PasswordResetResponse
 from app.schemas.verification import (
     VerifyEmailIn, ResendCodeIn, VerificationResponse, SignupResponse
 )
@@ -17,7 +17,7 @@ from app.core.config import settings
 from app.core.rate_limit import login_rate_limiter
 from app.services.email import (
     create_verification_code, send_verification_email,
-    verify_code, count_recent_codes
+    verify_code, count_recent_codes, send_password_reset_email
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -231,3 +231,45 @@ def logout(
     blacklist_token(token)
 
     return {"message": "Successfully logged out"}
+
+
+@router.post("/forgot-password", response_model=PasswordResetResponse)
+def forgot_password(body: ForgotPasswordIn, db: Session = Depends(get_db)):
+    """
+    Request a password reset code.
+    Uses silent success pattern to prevent email enumeration.
+    """
+    user = db.scalar(select(User).where(User.email == body.email))
+
+    if user:
+        # Rate limiting - max 3 codes per hour
+        recent_count = count_recent_codes(db, user.id, hours=1)
+        if recent_count < 3:
+            code = create_verification_code(db, user)
+            send_password_reset_email(user, code.code)
+
+    # Always return success to prevent email enumeration
+    return PasswordResetResponse(
+        message="If this email exists in our system, you will receive a password reset code."
+    )
+
+
+@router.post("/reset-password", response_model=PasswordResetResponse)
+def reset_password(body: ResetPasswordIn, db: Session = Depends(get_db)):
+    """
+    Reset password using verification code.
+    """
+    user = db.scalar(select(User).where(User.email == body.email))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Verify the code (don't mark email as verified)
+    success, message = verify_code(db, user, body.code, mark_verified=False)
+    if not success:
+        raise HTTPException(status_code=400, detail=message)
+
+    # Update password
+    user.password_hash = hash_password(body.new_password)
+    db.commit()
+
+    return PasswordResetResponse(message="Password reset successfully! You can now sign in.")
