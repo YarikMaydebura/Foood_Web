@@ -32,3 +32,6 @@ class User(Base):
     preferences: Mapped[list["UserPreference"]] = relationship(
         "UserPreference", back_populates="user", cascade="all, delete-orphan"
     )
+    saved_recipes: Mapped[list["UserSavedRecipe"]] = relationship(
+        "UserSavedRecipe", back_populates="user", cascade="all, delete-orphan"
+    )

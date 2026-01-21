@@ -7,6 +7,7 @@ from app.models.recipe_tag import recipe_tags
 from app.models.meal_plan import MealPlanEntry
 from app.models.shopping_list import ShoppingList
 from app.models.shopping_list_item import ShoppingListItem
+from app.models.user_saved_recipe import UserSavedRecipe
 
 __all__ = [
     "User",
@@ -18,4 +19,5 @@ __all__ = [
     "MealPlanEntry",
     "ShoppingList",
     "ShoppingListItem",
+    "UserSavedRecipe",
 ]
