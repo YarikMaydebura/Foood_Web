@@ -52,3 +52,10 @@ class Recipe(Base):
     meal_plan_entries: Mapped[list["MealPlanEntry"]] = relationship(
         "MealPlanEntry", back_populates="recipe"
     )
+    saved_by_users: Mapped[list["UserSavedRecipe"]] = relationship(
+        "UserSavedRecipe", back_populates="recipe", cascade="all, delete-orphan"
+    )
+
+    # Track if this recipe was copied from a library recipe
+    copied_from_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("recipes.id"), nullable=True)
+    copied_from: Mapped["Recipe | None"] = relationship("Recipe", remote_side=[id], foreign_keys=[copied_from_id])

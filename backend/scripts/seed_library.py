@@ -10,9 +10,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.recipe import Recipe
-from app.models.ingredient import Ingredient, RecipeIngredient
+from app.models.ingredient import Ingredient
+from app.models.recipe_ingredient import RecipeIngredient
 from app.models.tag import Tag
 from app.models.user import User
+from app.models.email_verification import EmailVerificationCode
+from app.models.user_preference import UserPreference
+from app.models.user_saved_recipe import UserSavedRecipe
 from app.core.security import hash_password
 import re
 
