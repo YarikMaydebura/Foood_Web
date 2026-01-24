@@ -211,7 +211,7 @@ export default function RecipeLibrary() {
   }, []);
 
   // Fetch recipes
-  const fetchRecipes = useCallback(async (reset = false) => {
+  const fetchRecipes = useCallback(async (reset = false, pageOverride = null) => {
     try {
       if (reset) {
         setLoading(true);
@@ -220,8 +220,9 @@ export default function RecipeLibrary() {
         setLoadingMore(true);
       }
 
+      const currentPage = pageOverride ?? (reset ? 1 : page);
       const params = new URLSearchParams({
-        offset: reset ? 0 : (page - 1) * 12,
+        offset: (currentPage - 1) * 12,
         limit: 12
       });
 
@@ -230,7 +231,10 @@ export default function RecipeLibrary() {
       if (selectedCategory) params.append('category', selectedCategory);
       if (selectedDifficulty) params.append('difficulty', selectedDifficulty);
 
-      const response = await fetch(`${API_BASE_URL}/library/recipes?${params}`);
+      const token = localStorage.getItem('authToken');
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+      const response = await fetch(`${API_BASE_URL}/library/recipes?${params}`, { headers });
       const data = await response.json();
 
       if (reset) {
@@ -265,8 +269,9 @@ export default function RecipeLibrary() {
   // Load more
   const loadMore = () => {
     if (!loadingMore && hasMore) {
-      setPage(prev => prev + 1);
-      fetchRecipes(false);
+      const newPage = page + 1;
+      setPage(newPage);
+      fetchRecipes(false, newPage);
     }
   };
 
