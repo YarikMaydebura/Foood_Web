@@ -113,6 +113,19 @@ const api = {
     }
   },
 
+  getSavedRecipes: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/library/saved`, {
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (!response.ok) return { error: data.detail || "Failed to fetch saved recipes", items: [] };
+      return data;
+    } catch (err) {
+      return { error: "Network error", items: [] };
+    }
+  },
+
   createRecipe: async (recipe) => {
     try {
       const response = await fetch(`${API_BASE_URL}/recipes`, {
@@ -266,6 +279,11 @@ function RecipeCard({ recipe, onEdit, onDelete, onShare }) {
 
         {/* Badges on image */}
         <div className="absolute top-3 left-3 flex flex-wrap gap-2">
+          {recipe.isSavedFromLibrary && (
+            <span className="bg-orange-500 text-white text-xs font-medium px-2.5 py-1 rounded-full">
+              Saved
+            </span>
+          )}
           {recipe.cuisine && (
             <span className="bg-purple-500 text-white text-xs font-medium px-2.5 py-1 rounded-full">
               {recipe.cuisine}
@@ -331,22 +349,25 @@ function RecipeCard({ recipe, onEdit, onDelete, onShare }) {
           </div>
         )}
 
-        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-          <button
-            onClick={() => onEdit(recipe)}
-            className="flex-1 flex items-center justify-center gap-2 bg-sky-50 text-sky-700 border border-sky-200 px-3 py-2 rounded-xl hover:bg-sky-100 transition text-sm font-medium"
-          >
-            <Edit2 className="w-4 h-4" />
-            Edit
-          </button>
-          <button
-            onClick={() => onDelete(recipe.id)}
-            className="flex-1 flex items-center justify-center gap-2 bg-red-50 text-red-700 border border-red-200 px-3 py-2 rounded-xl hover:bg-red-100 transition text-sm font-medium"
-          >
-            <Trash2 className="w-4 h-4" />
-            Delete
-          </button>
-        </div>
+        {/* Only show Edit/Delete for user-created recipes, not saved library recipes */}
+        {!recipe.isSavedFromLibrary && (
+          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => onEdit(recipe)}
+              className="flex-1 flex items-center justify-center gap-2 bg-sky-50 text-sky-700 border border-sky-200 px-3 py-2 rounded-xl hover:bg-sky-100 transition text-sm font-medium"
+            >
+              <Edit2 className="w-4 h-4" />
+              Edit
+            </button>
+            <button
+              onClick={() => onDelete(recipe.id)}
+              className="flex-1 flex items-center justify-center gap-2 bg-red-50 text-red-700 border border-red-200 px-3 py-2 rounded-xl hover:bg-red-100 transition text-sm font-medium"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete
+            </button>
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -1596,9 +1617,30 @@ const RecipeManager = () => {
     setLoading(true);
     setError("");
 
-    const result = await api.getRecipes();
-    if (result.error) setError(result.error);
-    else setRecipes(result.items || result.recipes || []);
+    // Fetch both user's own recipes and saved library recipes
+    const [userResult, savedResult] = await Promise.all([
+      api.getRecipes(),
+      api.getSavedRecipes()
+    ]);
+
+    if (userResult.error && !savedResult.items?.length) {
+      setError(userResult.error);
+      setRecipes([]);
+    } else {
+      // Merge user recipes (source: 'user') with saved library recipes (source: 'library')
+      const userRecipes = (userResult.items || userResult.recipes || []).map(r => ({
+        ...r,
+        source: r.source || 'user'
+      }));
+      const savedRecipes = (savedResult.items || []).map(r => ({
+        ...r,
+        source: 'library',
+        isSavedFromLibrary: true
+      }));
+
+      // Combine both lists
+      setRecipes([...userRecipes, ...savedRecipes]);
+    }
 
     setLoading(false);
   };

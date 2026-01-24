@@ -1,0 +1,14 @@
+
+Hope you enjoy your new logo, here are the people that
+made your beautiful logo happen :)
+font name: PermianSerifTypeface
+font link: https://www.fontsquirrel.com/fonts/permian-serif
+font author: Ilya Ruderman
+font author site: 
+Slogan Font: LindenHill-webfont.ttf
+
+icon designer: Doub.co
+icon designer link: /creator/doub/
+        
+{"bg-gradient-0":"#F05000","bg-gradient-1":"#F7AA00","icon":"#ffffff","font":"#ffffff","slogan":"#ffffff"}
+      
