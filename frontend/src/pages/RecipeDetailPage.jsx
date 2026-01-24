@@ -566,7 +566,7 @@ export default function RecipeDetailPage() {
             <div className="bg-white rounded-2xl shadow-sm p-6 sticky top-6">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Ingredients</h2>
               <ul className="space-y-3">
-                {recipe.ingredients?.map((ing, index) => (
+                {recipe.recipe_ingredients?.map((ing, index) => (
                   <li
                     key={index}
                     className="flex items-start gap-3 cursor-pointer group"
@@ -582,7 +582,7 @@ export default function RecipeDetailPage() {
                       )}
                     </div>
                     <span className={`text-gray-700 ${checkedIngredients.has(index) ? 'line-through text-gray-400' : ''}`}>
-                      <span className="font-medium">{ing.quantity} {ing.unit}</span> {ing.name}
+                      <span className="font-medium">{ing.quantity} {ing.unit}</span> {ing.ingredient.name}
                       {ing.note && <span className="text-gray-400 text-sm"> ({ing.note})</span>}
                     </span>
                   </li>
