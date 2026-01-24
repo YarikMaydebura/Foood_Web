@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import select, func
 from typing import Optional
 
@@ -102,9 +102,14 @@ def get_saved_recipes(
     """
     saved_entries = db.scalars(
         select(UserSavedRecipe)
+        .options(
+            joinedload(UserSavedRecipe.recipe)
+            .joinedload(Recipe.recipe_ingredients)
+            .joinedload(RecipeIngredient.ingredient)
+        )
         .where(UserSavedRecipe.user_id == current_user.id)
         .order_by(UserSavedRecipe.saved_at.desc())
-    ).all()
+    ).unique().all()
 
     items = []
     for entry in saved_entries:
@@ -125,7 +130,19 @@ def get_saved_recipes(
             "saved_at": entry.saved_at,
             "notes": entry.notes,
             "rating": entry.rating,
-            "is_saved": True
+            "is_saved": True,
+            "recipe_ingredients": [
+                {
+                    "id": ri.id,
+                    "quantity": ri.quantity,
+                    "unit": ri.unit,
+                    "ingredient": {
+                        "id": ri.ingredient.id,
+                        "name": ri.ingredient.name
+                    }
+                }
+                for ri in recipe.recipe_ingredients
+            ]
         })
 
     return {"items": items, "total": len(items)}

@@ -1439,14 +1439,16 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
   };
 
   const randomizeMealPlan = () => {
-    const newPlan = {};
+    // Start with existing plan to preserve manually added recipes
+    const newPlan = { ...mealPlan };
 
     if (randomizerMode === 'full-random') {
-      // Full random mode: pick any recipe for any slot
+      // Full random mode: pick any recipe for empty slots only
       days.forEach(day => {
-        newPlan[day] = {};
+        if (!newPlan[day]) newPlan[day] = {};
         meals.forEach(meal => {
-          if (recipes.length > 0) {
+          // Only fill if slot is empty
+          if (!newPlan[day][meal] && recipes.length > 0) {
             const randomRecipe = recipes[Math.floor(Math.random() * recipes.length)];
             newPlan[day][meal] = randomRecipe.id;
           }
@@ -1482,13 +1484,16 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
         return matchingRecipes[Math.floor(Math.random() * matchingRecipes.length)].id;
       };
 
-      // Fill each day and meal slot
+      // Fill each day and meal slot (only empty slots)
       days.forEach(day => {
-        newPlan[day] = {};
+        if (!newPlan[day]) newPlan[day] = {};
         meals.forEach(meal => {
-          const recipeId = getRandomRecipeForMeal(meal);
-          if (recipeId) {
-            newPlan[day][meal] = recipeId;
+          // Only fill if slot is empty
+          if (!newPlan[day][meal]) {
+            const recipeId = getRandomRecipeForMeal(meal);
+            if (recipeId) {
+              newPlan[day][meal] = recipeId;
+            }
           }
         });
       });
