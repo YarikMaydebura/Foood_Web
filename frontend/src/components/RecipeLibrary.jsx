@@ -43,7 +43,7 @@ function FilterPill({ label, isActive, onClick, onRemove }) {
 }
 
 // Recipe card component
-function RecipeCard({ recipe, onAddToCollection }) {
+function RecipeCard({ recipe, isSaved, onAddToCollection }) {
   const navigate = useNavigate();
   const [isHovered, setIsHovered] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -98,20 +98,24 @@ function RecipeCard({ recipe, onAddToCollection }) {
 
         {/* Add to Collection Button */}
         <AnimatePresence>
-          {isHovered && (
+          {(isHovered || isSaved) && (
             <motion.button
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
               onClick={handleAddToCollection}
-              disabled={adding}
-              className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full text-orange-500 hover:bg-white hover:text-orange-600 transition-colors shadow-lg"
-              title="Add to My Recipes"
+              disabled={adding || isSaved}
+              className={`absolute top-3 right-3 p-2 backdrop-blur-sm rounded-full transition-colors shadow-lg ${
+                isSaved
+                  ? 'bg-orange-500 text-white cursor-default'
+                  : 'bg-white/90 text-orange-500 hover:bg-white hover:text-orange-600'
+              }`}
+              title={isSaved ? "Saved to My Recipes" : "Add to My Recipes"}
             >
               {adding ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                <Heart className="w-5 h-5" />
+                <Heart className="w-5 h-5" fill={isSaved ? "currentColor" : "none"} />
               )}
             </motion.button>
           )}
@@ -190,6 +194,9 @@ export default function RecipeLibrary() {
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState(0);
 
+  // Saved recipes tracking
+  const [savedRecipeIds, setSavedRecipeIds] = useState(new Set());
+
   // Available options
   const [cuisines, setCuisines] = useState([]);
   const [categories] = useState(['meal', 'drink', 'snack', 'dessert']);
@@ -199,7 +206,7 @@ export default function RecipeLibrary() {
   useEffect(() => {
     fetch(`${API_BASE_URL}/library/cuisines`)
       .then(res => res.json())
-      .then(data => setCuisines(data))
+      .then(data => setCuisines(data.cuisines || []))
       .catch(console.error);
   }, []);
 
@@ -214,7 +221,7 @@ export default function RecipeLibrary() {
       }
 
       const params = new URLSearchParams({
-        page: reset ? 1 : page,
+        offset: reset ? 0 : (page - 1) * 12,
         limit: 12
       });
 
@@ -228,8 +235,16 @@ export default function RecipeLibrary() {
 
       if (reset) {
         setRecipes(data.items || []);
+        // Build set of saved recipe IDs
+        const savedIds = new Set(
+          (data.items || []).filter(r => r.is_saved).map(r => r.id)
+        );
+        setSavedRecipeIds(savedIds);
       } else {
         setRecipes(prev => [...prev, ...(data.items || [])]);
+        // Add new saved IDs to existing set
+        const newSavedIds = (data.items || []).filter(r => r.is_saved).map(r => r.id);
+        setSavedRecipeIds(prev => new Set([...prev, ...newSavedIds]));
       }
 
       setTotal(data.total || 0);
@@ -272,8 +287,8 @@ export default function RecipeLibrary() {
       });
 
       if (response.ok) {
-        // Could show a toast notification here
-        console.log('Recipe added to collection');
+        // Update local saved state
+        setSavedRecipeIds(prev => new Set([...prev, recipeId]));
       }
     } catch (err) {
       console.error('Error adding to collection:', err);
@@ -445,6 +460,7 @@ export default function RecipeLibrary() {
                 <RecipeCard
                   key={recipe.id}
                   recipe={recipe}
+                  isSaved={savedRecipeIds.has(recipe.id)}
                   onAddToCollection={handleAddToCollection}
                 />
               ))}
