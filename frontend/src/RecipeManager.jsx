@@ -27,6 +27,16 @@ import RecipeLibrary from "./components/RecipeLibrary";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 const APP_URL = import.meta.env.VITE_APP_URL ?? window.location.origin;
 
+// Helper: Get the Monday of the current week as YYYY-MM-DD string
+const getWeekStartDate = () => {
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Adjust to Monday
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
+  return monday.toISOString().split('T')[0];
+};
+
 // Helper function to get auth headers for Session 2 authentication
 const getAuthHeaders = () => {
   const token = localStorage.getItem("authToken");
@@ -198,6 +208,50 @@ const api = {
 
       const data = await response.json();
       if (!response.ok) return { error: data.detail || "Failed to update meal plan" };
+      return data;
+    } catch (err) {
+      return { error: "Network error" };
+    }
+  },
+
+  // Shopping List API methods
+  generateShoppingList: async (weekStartDate) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/shopping-lists/generate`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ week_start_date: weekStartDate }),
+      });
+      const data = await response.json();
+      if (!response.ok) return { error: data.detail || "Failed to generate shopping list" };
+      return data;
+    } catch (err) {
+      return { error: "Network error" };
+    }
+  },
+
+  getShoppingList: async (weekStartDate) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/shopping-lists/week/${weekStartDate}`, {
+        headers: getAuthHeaders(),
+      });
+      if (response.status === 404) return null;
+      const data = await response.json();
+      if (!response.ok) return { error: data.detail || "Failed to fetch shopping list" };
+      return data;
+    } catch (err) {
+      return { error: "Network error" };
+    }
+  },
+
+  toggleShoppingItem: async (itemId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/shopping-lists/items/${itemId}/toggle`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      const data = await response.json();
+      if (!response.ok) return { error: data.detail || "Failed to toggle item" };
       return data;
     } catch (err) {
       return { error: "Network error" };
@@ -675,12 +729,59 @@ const RecipesView = ({
   );
 };
 
-const ShoppingListView = ({ shoppingList, setShoppingList }) => {
-  const toggleItem = (index) => {
-    setShoppingList(
-      shoppingList.map((item, i) => (i === index ? { ...item, checked: !item.checked } : item))
+const ShoppingListView = ({ shoppingList, setShoppingList, backendShoppingList, setBackendShoppingList }) => {
+  // Find matching backend item by ingredient name
+  const findBackendItem = (ingredientName) => {
+    if (!backendShoppingList?.items) return null;
+    const normalizedName = ingredientName.toLowerCase();
+    return backendShoppingList.items.find(item =>
+      item.ingredient?.name?.toLowerCase() === normalizedName ||
+      normalizedName.includes(item.ingredient?.name?.toLowerCase()) ||
+      item.ingredient?.name?.toLowerCase().includes(normalizedName)
     );
   };
+
+  const toggleItem = async (index) => {
+    const item = shoppingList[index];
+    if (item.isHeader) return;
+
+    // Update local state immediately for responsiveness
+    setShoppingList(
+      shoppingList.map((it, i) => (i === index ? { ...it, checked: !it.checked } : it))
+    );
+
+    // Try to sync with backend
+    const backendItem = findBackendItem(item.ingredient);
+    if (backendItem) {
+      const result = await api.toggleShoppingItem(backendItem.id);
+      if (!result.error && backendShoppingList) {
+        // Update backend state
+        setBackendShoppingList({
+          ...backendShoppingList,
+          items: backendShoppingList.items.map(bi =>
+            bi.id === backendItem.id ? { ...bi, purchased: result.purchased } : bi
+          )
+        });
+      }
+    }
+  };
+
+  // Merge backend purchased status into local shopping list when backend data loads
+  useEffect(() => {
+    if (backendShoppingList?.items && shoppingList.length > 0) {
+      setShoppingList(prevList =>
+        prevList.map(item => {
+          if (item.isHeader) return item;
+          const backendItem = findBackendItem(item.ingredient);
+          if (backendItem) {
+            return { ...item, checked: backendItem.purchased };
+          }
+          return item;
+        })
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backendShoppingList]);
 
   const uncheckedCount = shoppingList.filter((item) => !item.isHeader && !item.checked).length;
   const totalCount = shoppingList.filter((item) => !item.isHeader).length;
@@ -1521,6 +1622,7 @@ const RecipeManager = () => {
   const [recipes, setRecipes] = useState([]);
   const [mealPlan, setMealPlan] = useState({});
   const [shoppingList, setShoppingList] = useState([]);
+  const [backendShoppingList, setBackendShoppingList] = useState(null);
 
   const [currentView, setCurrentView] = useState(localStorage.getItem('currentView') || "recipes");
   const [loading, setLoading] = useState(false);
@@ -1578,7 +1680,23 @@ const RecipeManager = () => {
   }, [user]);
 
   useEffect(() => {
-    generateShoppingList();
+    const syncShoppingList = async () => {
+      // Generate local shopping list for display (with categories, hints, etc.)
+      generateShoppingList();
+
+      // Sync with backend for persistence
+      if (user && Object.keys(mealPlan).length > 0) {
+        const weekStart = getWeekStartDate();
+
+        // Generate shopping list on backend
+        const generateResult = await api.generateShoppingList(weekStart);
+        if (!generateResult.error) {
+          setBackendShoppingList(generateResult);
+        }
+      }
+    };
+
+    syncShoppingList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mealPlan, recipes]);
 
@@ -2350,7 +2468,12 @@ const RecipeManager = () => {
         )}
 
         {currentView === "shopping" && (
-          <ShoppingListView shoppingList={shoppingList} setShoppingList={setShoppingList} />
+          <ShoppingListView
+            shoppingList={shoppingList}
+            setShoppingList={setShoppingList}
+            backendShoppingList={backendShoppingList}
+            setBackendShoppingList={setBackendShoppingList}
+          />
         )}
       </main>
 

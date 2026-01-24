@@ -7,6 +7,10 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
+
 from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models.recipe import Recipe
@@ -3008,7 +3012,7 @@ RECIPES = [
     {
         "title": "Lamb Kofta",
         "description": "Spiced ground lamb skewers grilled over open flame",
-        "image_url": "https://images.unsplash.com/photo-1544025162-d76694265947?w=800",
+        "image_url": "https://images.unsplash.com/photo-1529563021893-cc83c992d75d?w=800",
         "instructions": """1. Mix lamb with onion, parsley, spices.
 2. Knead mixture well for 5 minutes.
 3. Shape onto flat metal skewers.
@@ -4712,7 +4716,7 @@ RECIPES = [
     {
         "title": "Meatloaf",
         "description": "Classic American meatloaf with tangy glaze",
-        "image_url": "https://images.unsplash.com/photo-1544025162-d76694265947?w=800",
+        "image_url": "https://images.unsplash.com/photo-1432139509613-5c4255815697?w=800",
         "instructions": """1. Mix beef with breadcrumbs, egg, onion, seasonings.
 2. Form into loaf shape on baking sheet.
 3. Make glaze: ketchup, brown sugar, mustard.
@@ -4792,7 +4796,7 @@ RECIPES = [
     {
         "title": "Chili Con Carne",
         "description": "Hearty beef and bean chili with warm spices",
-        "image_url": "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=800",
+        "image_url": "https://images.unsplash.com/photo-1594756202469-9ff9799b2e4e?w=800",
         "instructions": """1. Brown beef in large pot.
 2. Add onion, peppers, cook until soft.
 3. Add garlic, spices, cook 1 minute.
@@ -4986,7 +4990,7 @@ RECIPES = [
     {
         "title": "Chicken Noodle Soup",
         "description": "Classic comfort soup with tender chicken and egg noodles",
-        "image_url": "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800",
+        "image_url": "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=800",
         "instructions": """1. Simmer chicken in water with aromatics 1 hour.
 2. Remove chicken, shred meat.
 3. Strain broth.
@@ -5026,7 +5030,7 @@ RECIPES = [
     {
         "title": "Tomato Basil Soup",
         "description": "Creamy roasted tomato soup with fresh basil",
-        "image_url": "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800",
+        "image_url": "https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?w=800",
         "instructions": """1. Roast tomatoes with garlic and onion at 400°F.
 2. Transfer to pot, add stock.
 3. Simmer 20 minutes.
@@ -5065,7 +5069,7 @@ RECIPES = [
     {
         "title": "Minestrone Soup",
         "description": "Hearty Italian vegetable soup with pasta and beans",
-        "image_url": "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800",
+        "image_url": "https://images.unsplash.com/photo-1603105037880-880cd4edfb0d?w=800",
         "instructions": """1. Sauté onion, celery, carrots in olive oil.
 2. Add garlic, tomatoes, stock.
 3. Add potatoes, zucchini, green beans.
@@ -5148,7 +5152,7 @@ RECIPES = [
     {
         "title": "Vegetable Curry",
         "description": "Creamy coconut curry with mixed vegetables",
-        "image_url": "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=800",
+        "image_url": "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800",
         "instructions": """1. Heat oil, fry curry paste 1 minute.
 2. Add onion, cook until soft.
 3. Add vegetables that take longer to cook first.
@@ -5303,7 +5307,7 @@ RECIPES = [
     {
         "title": "Vegetable Fried Rice",
         "description": "Quick stir-fried rice with mixed vegetables and eggs",
-        "image_url": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800",
+        "image_url": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=800",
         "instructions": """1. Use day-old cold rice for best results.
 2. Scramble eggs, set aside.
 3. Stir-fry vegetables in hot wok.
@@ -6056,7 +6060,7 @@ RECIPES = [
     {
         "title": "Lamb Chops",
         "description": "Herb-crusted lamb chops grilled to perfection",
-        "image_url": "https://images.unsplash.com/photo-1544025162-d76694265947?w=800",
+        "image_url": "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=800",
         "instructions": """1. Mix herbs, garlic, and olive oil into paste.
 2. Rub on lamb chops, marinate 1 hour.
 3. Preheat grill to high.
@@ -6791,7 +6795,7 @@ RECIPES = [
     {
         "title": "Hummus with Pita",
         "description": "Creamy chickpea dip with warm pita bread",
-        "image_url": "https://images.unsplash.com/photo-1577805947697-89e18249d767?w=800",
+        "image_url": "https://images.unsplash.com/photo-1623428187969-5da2dcea5ebf?w=800",
         "instructions": """1. Blend chickpeas, tahini, lemon juice, garlic.
 2. Add olive oil while blending.
 3. Add ice water for smooth texture.
@@ -6829,7 +6833,7 @@ RECIPES = [
     {
         "title": "Baba Ganoush",
         "description": "Smoky roasted eggplant dip with tahini",
-        "image_url": "https://images.unsplash.com/photo-1577805947697-89e18249d767?w=800",
+        "image_url": "https://images.unsplash.com/photo-1604152135912-04a022e23696?w=800",
         "instructions": """1. Char eggplant over flame until collapsed.
 2. Scoop out flesh, drain excess liquid.
 3. Blend with tahini, lemon juice, garlic.
@@ -6867,7 +6871,7 @@ RECIPES = [
     {
         "title": "Tzatziki",
         "description": "Cool cucumber yogurt sauce with garlic and dill",
-        "image_url": "https://images.unsplash.com/photo-1577805947697-89e18249d767?w=800",
+        "image_url": "https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800",
         "instructions": """1. Grate cucumber, salt and drain 30 minutes.
 2. Squeeze out excess moisture.
 3. Mix yogurt with garlic and olive oil.
@@ -7120,7 +7124,7 @@ RECIPES = [
     {
         "title": "Beef Stir Fry",
         "description": "Quick beef and vegetable stir fry with oyster sauce",
-        "image_url": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800",
+        "image_url": "https://images.unsplash.com/photo-1525755662778-989d0524087e?w=800",
         "instructions": """1. Slice beef thin, marinate in soy and cornstarch.
 2. Heat wok until smoking.
 3. Sear beef quickly, remove.
@@ -7158,7 +7162,7 @@ RECIPES = [
     {
         "title": "Chicken Curry",
         "description": "Simple home-style curry with tender chicken",
-        "image_url": "https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=800",
+        "image_url": "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800",
         "instructions": """1. Sauté onions until golden.
 2. Add ginger, garlic, cook 1 minute.
 3. Add curry powder, cumin, turmeric.
@@ -7348,7 +7352,7 @@ RECIPES = [
     {
         "title": "Shrimp Fried Rice",
         "description": "Classic Chinese fried rice with shrimp and vegetables",
-        "image_url": "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800",
+        "image_url": "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=800",
         "instructions": """1. Use cold, day-old rice.
 2. Cook shrimp, set aside.
 3. Scramble eggs, set aside.
