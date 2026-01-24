@@ -235,7 +235,7 @@ function DifficultyBadge({ difficulty }) {
 }
 
 // Recipe Card Component with animations
-function RecipeCard({ recipe, onEdit, onDelete, onShare }) {
+function RecipeCard({ recipe, onEdit, onDelete, onShare, onUnsave }) {
   const navigate = useNavigate();
   const totalTime = (recipe.prep_time_minutes || 0) + (recipe.cook_time_minutes || 0);
 
@@ -350,7 +350,7 @@ function RecipeCard({ recipe, onEdit, onDelete, onShare }) {
         )}
 
         {/* Only show Edit/Delete for user-created recipes, not saved library recipes */}
-        {!recipe.isSavedFromLibrary && (
+        {!recipe.isSavedFromLibrary ? (
           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => onEdit(recipe)}
@@ -365,6 +365,16 @@ function RecipeCard({ recipe, onEdit, onDelete, onShare }) {
             >
               <Trash2 className="w-4 h-4" />
               Delete
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => onUnsave && onUnsave(recipe.id)}
+              className="flex-1 flex items-center justify-center gap-2 bg-red-50 text-red-700 border border-red-200 px-3 py-2 rounded-xl hover:bg-red-100 transition text-sm font-medium"
+            >
+              <X className="w-4 h-4" />
+              Remove
             </button>
           </div>
         )}
@@ -384,6 +394,7 @@ const RecipesView = ({
   onAddRecipe,
   onEditRecipe,
   onDeleteRecipe,
+  onUnsaveRecipe,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState('date-newest');
@@ -604,6 +615,7 @@ const RecipesView = ({
                   onEdit={onEditRecipe}
                   onDelete={onDeleteRecipe}
                   onShare={handleShareRecipe}
+                  onUnsave={onUnsaveRecipe}
                 />
               ))}
             </AnimatePresence>
@@ -1617,21 +1629,19 @@ const RecipeManager = () => {
     setLoading(true);
     setError("");
 
-    // Fetch both user's own recipes and saved library recipes
-    const [userResult, savedResult] = await Promise.all([
-      api.getRecipes(),
-      api.getSavedRecipes()
-    ]);
+    try {
+      // Fetch both user's own recipes and saved library recipes
+      const [userResult, savedResult] = await Promise.all([
+        api.getRecipes(),
+        api.getSavedRecipes()
+      ]);
 
-    if (userResult.error && !savedResult.items?.length) {
-      setError(userResult.error);
-      setRecipes([]);
-    } else {
-      // Merge user recipes (source: 'user') with saved library recipes (source: 'library')
+      // Handle errors gracefully - show whatever data we have
       const userRecipes = (userResult.items || userResult.recipes || []).map(r => ({
         ...r,
         source: r.source || 'user'
       }));
+
       const savedRecipes = (savedResult.items || []).map(r => ({
         ...r,
         source: 'library',
@@ -1640,9 +1650,36 @@ const RecipeManager = () => {
 
       // Combine both lists
       setRecipes([...userRecipes, ...savedRecipes]);
+
+      // Only show error if BOTH failed and no data
+      if (userResult.error && savedResult.error && userRecipes.length === 0 && savedRecipes.length === 0) {
+        setError("Unable to load recipes");
+      }
+    } catch (err) {
+      console.error('Error loading recipes:', err);
+      setError("");
+      setRecipes([]);
     }
 
     setLoading(false);
+  };
+
+  // Unsave a library recipe
+  const handleUnsaveRecipe = async (recipeId) => {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/library/recipes/${recipeId}/unsave`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        loadRecipes(); // Refresh the list
+      }
+    } catch (err) {
+      console.error('Error unsaving recipe:', err);
+    }
   };
 
   const loadMealPlan = async () => {
@@ -2281,6 +2318,7 @@ const RecipeManager = () => {
                 onAddRecipe={handleAddRecipe}
                 onEditRecipe={handleEditRecipe}
                 onDeleteRecipe={handleDeleteRecipe}
+                onUnsaveRecipe={handleUnsaveRecipe}
               />
             </motion.div>
           )}

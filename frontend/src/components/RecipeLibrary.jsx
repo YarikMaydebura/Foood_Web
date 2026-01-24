@@ -103,14 +103,16 @@ function RecipeCard({ recipe, isSaved, onAddToCollection }) {
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
+              whileTap={{ scale: 0.85 }}
+              whileHover={{ scale: 1.1 }}
               onClick={handleAddToCollection}
-              disabled={adding || isSaved}
-              className={`absolute top-3 right-3 p-2 backdrop-blur-sm rounded-full transition-colors shadow-lg ${
+              disabled={adding}
+              className={`absolute top-3 right-3 p-2 backdrop-blur-sm rounded-full transition-colors shadow-lg cursor-pointer ${
                 isSaved
-                  ? 'bg-orange-500 text-white cursor-default'
+                  ? 'bg-orange-500 text-white hover:bg-orange-600'
                   : 'bg-white/90 text-orange-500 hover:bg-white hover:text-orange-600'
               }`}
-              title={isSaved ? "Saved to My Recipes" : "Add to My Recipes"}
+              title={isSaved ? "Remove from My Recipes" : "Add to My Recipes"}
             >
               {adding ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -275,7 +277,7 @@ export default function RecipeLibrary() {
     }
   };
 
-  // Add to collection
+  // Toggle save/unsave recipe
   const handleAddToCollection = async (recipeId) => {
     const token = localStorage.getItem('authToken');
     if (!token) {
@@ -283,20 +285,31 @@ export default function RecipeLibrary() {
       return;
     }
 
+    const isCurrentlySaved = savedRecipeIds.has(recipeId);
+
     try {
-      const response = await fetch(`${API_BASE_URL}/library/recipes/${recipeId}/add-to-collection`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const response = await fetch(
+        `${API_BASE_URL}/library/recipes/${recipeId}/${isCurrentlySaved ? 'unsave' : 'add-to-collection'}`,
+        {
+          method: isCurrentlySaved ? 'DELETE' : 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
         }
-      });
+      );
 
       if (response.ok) {
-        // Update local saved state
-        setSavedRecipeIds(prev => new Set([...prev, recipeId]));
+        // Toggle saved state
+        setSavedRecipeIds(prev => {
+          const newSet = new Set(prev);
+          if (isCurrentlySaved) {
+            newSet.delete(recipeId);
+          } else {
+            newSet.add(recipeId);
+          }
+          return newSet;
+        });
       }
     } catch (err) {
-      console.error('Error adding to collection:', err);
+      console.error('Error toggling recipe save:', err);
     }
   };
 
