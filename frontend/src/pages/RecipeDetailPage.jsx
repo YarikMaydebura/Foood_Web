@@ -21,6 +21,28 @@ import {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
 
+const DAY_NAME_TO_INDEX = {
+  monday: 0,
+  tuesday: 1,
+  wednesday: 2,
+  thursday: 3,
+  friday: 4,
+  saturday: 5,
+  sunday: 6,
+};
+
+function currentWeekMonday() {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0=Sun..6=Sat
+  const offsetToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + offsetToMonday);
+  const yyyy = monday.getFullYear();
+  const mm = String(monday.getMonth() + 1).padStart(2, '0');
+  const dd = String(monday.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // Nutrition info card component
 function NutritionCard({ icon: Icon, label, value, unit, color }) {
   return (
@@ -37,9 +59,10 @@ function NutritionCard({ icon: Icon, label, value, unit, color }) {
 // Add to Meal Plan Modal
 function AddToMealPlanModal({ isOpen, onClose, recipe, onAdd }) {
   const [selectedDay, setSelectedDay] = useState('monday');
-  const [selectedMeal, setSelectedMeal] = useState('dinner');
+  const [selectedMeal, setSelectedMeal] = useState('Dinner');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const days = [
     { value: 'monday', label: 'Monday' },
@@ -52,14 +75,15 @@ function AddToMealPlanModal({ isOpen, onClose, recipe, onAdd }) {
   ];
 
   const meals = [
-    { value: 'breakfast', label: 'Breakfast' },
-    { value: 'lunch', label: 'Lunch' },
-    { value: 'dinner', label: 'Dinner' },
-    { value: 'snack', label: 'Snack' }
+    { value: 'Breakfast',        label: 'Breakfast' },
+    { value: 'Lunch',            label: 'Lunch' },
+    { value: 'Dinner',           label: 'Dinner' },
+    { value: 'Dessert/Snacking', label: 'Dessert / Snacking' }
   ];
 
   const handleSubmit = async () => {
     setLoading(true);
+    setErrorMessage('');
     try {
       await onAdd(selectedDay, selectedMeal);
       setSuccess(true);
@@ -68,7 +92,7 @@ function AddToMealPlanModal({ isOpen, onClose, recipe, onAdd }) {
         setSuccess(false);
       }, 1500);
     } catch (error) {
-      console.error('Error adding to meal plan:', error);
+      setErrorMessage(error.message || 'Failed to add to meal plan');
     } finally {
       setLoading(false);
     }
@@ -168,6 +192,12 @@ function AddToMealPlanModal({ isOpen, onClose, recipe, onAdd }) {
                 </div>
               </div>
             </div>
+
+            {errorMessage && (
+              <div className="mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                {errorMessage}
+              </div>
+            )}
 
             <button
               onClick={handleSubmit}
@@ -302,6 +332,11 @@ export default function RecipeDetailPage() {
       return;
     }
 
+    const dayIndex = DAY_NAME_TO_INDEX[day];
+    if (dayIndex === undefined) {
+      throw new Error(`Unknown day: ${day}`);
+    }
+
     const response = await fetch(`${API_BASE_URL}/meal-plan`, {
       method: 'POST',
       headers: {
@@ -310,13 +345,20 @@ export default function RecipeDetailPage() {
       },
       body: JSON.stringify({
         recipe_id: recipe.id,
-        day_of_week: day,
-        meal_type: meal
+        week_start_date: currentWeekMonday(),
+        day_of_week: dayIndex,
+        meal_slot: meal
       })
     });
 
     if (!response.ok) {
-      throw new Error('Failed to add to meal plan');
+      const data = await response.json().catch(() => ({}));
+      const detail = typeof data.detail === 'string'
+        ? data.detail
+        : Array.isArray(data.detail) && data.detail[0]?.msg
+          ? data.detail[0].msg
+          : 'Failed to add to meal plan';
+      throw new Error(detail);
     }
   };
 

@@ -81,6 +81,7 @@ app.include_router(onboarding_router)
 app.include_router(library_router)
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"ok": True, "status": "running"}
+
