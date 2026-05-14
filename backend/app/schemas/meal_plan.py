@@ -28,6 +28,7 @@ class MealPlanEntryOut(BaseModel):
     day_of_week: int
     meal_slot: str
     recipe_id: int
+    position: int = 0
     created_at: datetime
 
     class Config:

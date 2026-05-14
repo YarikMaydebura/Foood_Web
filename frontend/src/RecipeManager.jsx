@@ -1405,28 +1405,41 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
   );
 };
 
+const SLOT_CAP = 5;
+
 const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomizerMode }) => {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const meals = ["Breakfast", "Lunch", "Dinner", "Dessert/Snacking"];
 
+  // Slots are arrays of recipe IDs. Normalize legacy single-int values to a 1-element array.
+  const slotIds = (day, meal) => {
+    const raw = mealPlan[day]?.[meal];
+    if (raw == null) return [];
+    return Array.isArray(raw) ? raw : [raw];
+  };
+
+  const setSlot = (plan, day, meal, ids) => {
+    const next = { ...plan, [day]: { ...(plan[day] || {}) } };
+    if (ids.length === 0) {
+      delete next[day][meal];
+      if (Object.keys(next[day]).length === 0) delete next[day];
+    } else {
+      next[day][meal] = ids;
+    }
+    return next;
+  };
+
   const addRecipeToMeal = (day, meal, recipeId) => {
-    const newPlan = {
-      ...mealPlan,
-      [day]: {
-        ...(mealPlan[day] || {}),
-        [meal]: recipeId,
-      },
-    };
+    const current = slotIds(day, meal);
+    if (current.length >= SLOT_CAP) return;
+    const newPlan = setSlot(mealPlan, day, meal, [...current, recipeId]);
     setMealPlan(newPlan);
     onSavePlan(newPlan);
   };
 
-  const removeRecipeFromMeal = (day, meal) => {
-    const newPlan = { ...mealPlan };
-    if (newPlan[day]) {
-      delete newPlan[day][meal];
-      if (Object.keys(newPlan[day]).length === 0) delete newPlan[day];
-    }
+  const removeRecipeAt = (day, meal, index) => {
+    const current = slotIds(day, meal);
+    const newPlan = setSlot(mealPlan, day, meal, current.filter((_, i) => i !== index));
     setMealPlan(newPlan);
     onSavePlan(newPlan);
   };
@@ -1439,65 +1452,43 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
   };
 
   const randomizeMealPlan = () => {
-    // Start with existing plan to preserve manually added recipes
-    const newPlan = { ...mealPlan };
+    // Preserve any slot that already has at least one recipe; only fill empty slots.
+    let newPlan = mealPlan;
 
-    if (randomizerMode === 'full-random') {
-      // Full random mode: pick any recipe for empty slots only
-      days.forEach(day => {
-        if (!newPlan[day]) newPlan[day] = {};
-        meals.forEach(meal => {
-          // Only fill if slot is empty
-          if (!newPlan[day][meal] && recipes.length > 0) {
-            const randomRecipe = recipes[Math.floor(Math.random() * recipes.length)];
-            newPlan[day][meal] = randomRecipe.id;
-          }
-        });
-      });
-    } else {
-      // Smart mode: match recipes by tags
-      // Helper function to get random recipe with matching tag
-      const getRandomRecipeForMeal = (mealType) => {
-        // Map meal types to tag keywords
-        const tagMapping = {
-          'Breakfast': ['breakfast'],
-          'Lunch': ['lunch'],
-          'Dinner': ['dinner'],
-          'Dessert/Snacking': ['dessert', 'sweet', 'snack']
-        };
+    const pickRandom = (pool) =>
+      pool.length === 0 ? null : pool[Math.floor(Math.random() * pool.length)].id;
 
-        const matchingKeywords = tagMapping[mealType] || [];
-
-        // Filter recipes that have tags matching this meal type
-        const matchingRecipes = recipes.filter(recipe => {
-          if (!recipe.tags || recipe.tags.length === 0) return false;
-          return recipe.tags.some(tag => {
-            const tagName = typeof tag === 'string' ? tag.toLowerCase() : tag.name.toLowerCase();
-            return matchingKeywords.some(keyword => tagName.includes(keyword));
-          });
-        });
-
-        // If no matching recipes, return null
-        if (matchingRecipes.length === 0) return null;
-
-        // Return random recipe from matching ones
-        return matchingRecipes[Math.floor(Math.random() * matchingRecipes.length)].id;
+    const getRandomRecipeForMeal = (mealType) => {
+      if (randomizerMode === 'full-random') {
+        return pickRandom(recipes);
+      }
+      const tagMapping = {
+        'Breakfast': ['breakfast'],
+        'Lunch': ['lunch'],
+        'Dinner': ['dinner'],
+        'Dessert/Snacking': ['dessert', 'sweet', 'snack'],
       };
-
-      // Fill each day and meal slot (only empty slots)
-      days.forEach(day => {
-        if (!newPlan[day]) newPlan[day] = {};
-        meals.forEach(meal => {
-          // Only fill if slot is empty
-          if (!newPlan[day][meal]) {
-            const recipeId = getRandomRecipeForMeal(meal);
-            if (recipeId) {
-              newPlan[day][meal] = recipeId;
-            }
-          }
+      const matchingKeywords = tagMapping[mealType] || [];
+      const matching = recipes.filter((r) => {
+        if (!r.tags || r.tags.length === 0) return false;
+        return r.tags.some((tag) => {
+          const tagName = typeof tag === 'string' ? tag.toLowerCase() : tag.name.toLowerCase();
+          return matchingKeywords.some((keyword) => tagName.includes(keyword));
         });
       });
-    }
+      return pickRandom(matching) ?? pickRandom(recipes);
+    };
+
+    days.forEach((day) => {
+      meals.forEach((meal) => {
+        const existing = Array.isArray(newPlan[day]?.[meal])
+          ? newPlan[day][meal]
+          : newPlan[day]?.[meal] != null ? [newPlan[day][meal]] : [];
+        if (existing.length > 0) return;
+        const id = getRandomRecipeForMeal(meal);
+        if (id != null) newPlan = setSlot(newPlan, day, meal, [id]);
+      });
+    });
 
     setMealPlan(newPlan);
     onSavePlan(newPlan);
@@ -1563,50 +1554,71 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
                 <tr key={day} className={`border-b border-gray-100 hover:bg-orange-50/50 transition-colors ${dayIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
                   <td className="p-2 sm:p-3 text-xs sm:text-sm font-semibold text-gray-800">{day}</td>
                   {meals.map((meal) => {
-                    const recipeId = mealPlan[day]?.[meal];
-                    const recipe = recipes.find((r) => r.id === recipeId);
+                    const ids = slotIds(day, meal);
+                    const atCap = ids.length >= SLOT_CAP;
 
                     return (
-                      <td key={meal} className="p-2 sm:p-3">
-                        {recipe ? (
-                          <div className="bg-gradient-to-r from-orange-100 to-amber-100 rounded-xl p-2 sm:p-3 relative group">
-                            <p className="text-xs sm:text-sm font-medium text-gray-800 pr-6 line-clamp-2">{recipe.title}</p>
-                            {recipe.difficulty && (
-                              <div className="mt-1">
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                  recipe.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                                  recipe.difficulty === 'medium' ? 'bg-amber-100 text-amber-700' :
-                                  'bg-red-100 text-red-700'
-                                }`}>
-                                  {recipe.difficulty}
-                                </span>
+                      <td key={meal} className="p-2 sm:p-3 align-top">
+                        <div className="space-y-1.5">
+                          {ids.map((recipeId, index) => {
+                            const recipe = recipes.find((r) => r.id === recipeId);
+                            if (!recipe) return null;
+                            return (
+                              <div
+                                key={`${recipeId}-${index}`}
+                                className="bg-gradient-to-r from-orange-100 to-amber-100 rounded-xl p-2 sm:p-3 relative group"
+                              >
+                                <p className="text-xs sm:text-sm font-medium text-gray-800 pr-6 line-clamp-2">
+                                  {recipe.title}
+                                </p>
+                                {recipe.difficulty && (
+                                  <div className="mt-1">
+                                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                      recipe.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
+                                      recipe.difficulty === 'medium' ? 'bg-amber-100 text-amber-700' :
+                                      'bg-red-100 text-red-700'
+                                    }`}>
+                                      {recipe.difficulty}
+                                    </span>
+                                  </div>
+                                )}
+                                <button
+                                  onClick={() => removeRecipeAt(day, meal, index)}
+                                  className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
+                                  aria-label="Remove recipe"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
                               </div>
-                            )}
-                            <button
-                              onClick={() => removeRecipeFromMeal(day, meal)}
-                              className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100"
+                            );
+                          })}
+                          {!atCap && (
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  addRecipeToMeal(day, meal, parseInt(e.target.value, 10));
+                                  e.target.value = "";
+                                }
+                              }}
+                              className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-dashed border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white/50 hover:border-orange-400 hover:bg-white transition-all cursor-pointer"
                             >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <select
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                addRecipeToMeal(day, meal, parseInt(e.target.value, 10));
-                                e.target.value = "";
-                              }
-                            }}
-                            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border border-dashed border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white/50 hover:border-orange-400 hover:bg-white transition-all cursor-pointer"
-                          >
-                            <option value="">+ Add recipe</option>
-                            {recipes.map((r) => (
-                              <option key={r.id} value={r.id}>
-                                {r.title}
+                              <option value="">
+                                {ids.length === 0 ? '+ Add recipe' : `+ Add (${ids.length}/${SLOT_CAP})`}
                               </option>
-                            ))}
-                          </select>
-                        )}
+                              {recipes.map((r) => (
+                                <option key={r.id} value={r.id}>
+                                  {r.title}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                          {atCap && (
+                            <p className="text-[10px] sm:text-xs text-gray-400 text-center">
+                              Slot full ({SLOT_CAP}/{SLOT_CAP})
+                            </p>
+                          )}
+                        </div>
                       </td>
                     );
                   })}
@@ -1881,7 +1893,9 @@ const RecipeManager = () => {
     };
 
     Object.values(mealPlan).forEach((dayPlan) => {
-      Object.values(dayPlan).forEach((recipeId) => {
+      Object.values(dayPlan).forEach((slotValue) => {
+        const ids = Array.isArray(slotValue) ? slotValue : slotValue != null ? [slotValue] : [];
+        ids.forEach((recipeId) => {
         const recipe = recipes.find((r) => r.id === recipeId);
         if (recipe?.recipe_ingredients) {
           recipe.recipe_ingredients.forEach((ri) => {
@@ -1969,6 +1983,7 @@ const RecipeManager = () => {
             }
           });
         }
+        });
       });
     });
 
