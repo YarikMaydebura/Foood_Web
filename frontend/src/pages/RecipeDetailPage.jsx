@@ -292,12 +292,37 @@ export default function RecipeDetailPage() {
   const [showMealPlanModal, setShowMealPlanModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savePending, setSavePending] = useState(false);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     setIsAuthenticated(!!token);
     fetchRecipe();
   }, [slug]);
+
+  // Once we know the recipe id + auth, check if this recipe is already saved.
+  useEffect(() => {
+    if (!isAuthenticated || !recipe?.id) return;
+    const token = localStorage.getItem('authToken');
+    fetch(`${API_BASE_URL}/library/saved`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((data) => {
+        const ids = new Set((data.items || []).map((r) => r.id));
+        setIsSaved(ids.has(recipe.id));
+      })
+      .catch(() => {});
+  }, [isAuthenticated, recipe?.id]);
+
+  // Auto-dismiss toast after 2.5s
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const fetchRecipe = async () => {
     try {
@@ -362,27 +387,35 @@ export default function RecipeDetailPage() {
     }
   };
 
-  const handleAddToCollection = async () => {
+  const handleToggleSave = async () => {
     const token = localStorage.getItem('authToken');
     if (!token) {
       navigate('/auth/login');
       return;
     }
+    if (savePending) return;
+    setSavePending(true);
+
+    const wasSaved = isSaved;
+    // Optimistic flip so the heart reflects intent immediately.
+    setIsSaved(!wasSaved);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/library/recipes/${recipe.id}/add-to-collection`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const url = wasSaved
+        ? `${API_BASE_URL}/library/recipes/${recipe.id}/unsave`
+        : `${API_BASE_URL}/library/recipes/${recipe.id}/save`;
+      const response = await fetch(url, {
+        method: wasSaved ? 'DELETE' : 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
       });
-
-      if (response.ok) {
-        // Show success feedback
-        alert('Recipe added to your collection!');
-      }
+      if (!response.ok) throw new Error('Request failed');
+      setToast(wasSaved ? 'Removed from favorites' : 'Saved to favorites');
     } catch (err) {
-      console.error('Error adding to collection:', err);
+      // Roll back the optimistic update.
+      setIsSaved(wasSaved);
+      setToast('Could not update favorites. Try again.');
+    } finally {
+      setSavePending(false);
     }
   };
 
@@ -416,6 +449,18 @@ export default function RecipeDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50">
+      {/* Toast */}
+      {toast && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-full shadow-lg"
+        >
+          {toast}
+        </motion.div>
+      )}
+
       {/* Hero Section */}
       <div className="relative h-[50vh] min-h-[400px]">
         <img
@@ -441,13 +486,19 @@ export default function RecipeDetailPage() {
           >
             <Share2 className="w-6 h-6" />
           </button>
-          {isAuthenticated && recipe.source === 'library' && (
+          {isAuthenticated && (
             <button
-              onClick={handleAddToCollection}
-              className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-colors"
-              title="Add to My Recipes"
+              onClick={handleToggleSave}
+              disabled={savePending}
+              className={`p-3 backdrop-blur-md rounded-full transition-colors disabled:opacity-60 ${
+                isSaved
+                  ? 'bg-red-500/90 text-white hover:bg-red-500'
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+              title={isSaved ? 'Remove from favorites' : 'Save to favorites'}
+              aria-pressed={isSaved}
             >
-              <Heart className="w-6 h-6" />
+              <Heart className={`w-6 h-6 ${isSaved ? 'fill-current' : ''}`} />
             </button>
           )}
         </div>

@@ -22,6 +22,7 @@ import {
   ChefHat,
   SlidersHorizontal,
   AlertTriangle,
+  Heart,
 } from "lucide-react";
 import RecipeLibrary from "./components/RecipeLibrary";
 
@@ -476,6 +477,10 @@ const RecipesView = ({
   onEditRecipe,
   onDeleteRecipe,
   onUnsaveRecipe,
+  viewTitle = "My Recipes",
+  viewSubtitle = "Your personal recipe collection",
+  emptyStateTitle = "No recipes yet",
+  emptyStateMessage = "Start building your recipe collection!",
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState('date-newest');
@@ -565,16 +570,18 @@ const RecipesView = ({
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">My Recipes</h2>
-          <p className="text-gray-500 text-sm mt-1">Your personal recipe collection</p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{viewTitle}</h2>
+          <p className="text-gray-500 text-sm mt-1">{viewSubtitle}</p>
         </div>
-        <button
-          onClick={onAddRecipe}
-          className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-md hover:shadow-lg font-medium"
-        >
-          <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">Add Recipe</span>
-        </button>
+        {onAddRecipe && (
+          <button
+            onClick={onAddRecipe}
+            className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-md hover:shadow-lg font-medium"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="hidden sm:inline">Add Recipe</span>
+          </button>
+        )}
       </div>
 
       <div className="mb-6 space-y-4">
@@ -674,14 +681,16 @@ const RecipesView = ({
             </>
           ) : (
             <>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">No recipes yet</h3>
-              <p className="text-gray-500 mb-6">Start building your recipe collection!</p>
-              <button
-                onClick={onAddRecipe}
-                className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-md font-medium"
-              >
-                Add Your First Recipe
-              </button>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">{emptyStateTitle}</h3>
+              <p className="text-gray-500 mb-6">{emptyStateMessage}</p>
+              {onAddRecipe && (
+                <button
+                  onClick={onAddRecipe}
+                  className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-3 rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all shadow-md font-medium"
+                >
+                  Add Your First Recipe
+                </button>
+              )}
             </>
           )}
         </motion.div>
@@ -2630,6 +2639,18 @@ const RecipeManager = () => {
               </button>
 
               <button
+                onClick={() => setCurrentView("favorites")}
+                className={`flex items-center gap-1 sm:gap-2 p-2 sm:px-4 sm:py-2 rounded-xl transition font-medium ${
+                  currentView === "favorites"
+                    ? "bg-white/25 text-white shadow-inner"
+                    : "text-white/80 hover:bg-white/15 hover:text-white"
+                }`}
+              >
+                <Heart className="w-5 h-5" />
+                <span className="hidden md:inline">Favorites</span>
+              </button>
+
+              <button
                 onClick={() => setCurrentView("library")}
                 className={`flex items-center gap-1 sm:gap-2 p-2 sm:px-4 sm:py-2 rounded-xl transition font-medium ${
                   currentView === "library"
@@ -2724,7 +2745,7 @@ const RecipeManager = () => {
               transition={{ duration: 0.2 }}
             >
               <RecipesView
-                recipes={filteredRecipes}
+                recipes={filteredRecipes.filter((r) => r.source !== 'library')}
                 loading={loading}
                 searchQuery={searchQuery}
                 setSearchQuery={setSearchQuery}
@@ -2735,6 +2756,34 @@ const RecipeManager = () => {
                 onEditRecipe={handleEditRecipe}
                 onDeleteRecipe={handleDeleteRecipe}
                 onUnsaveRecipe={handleUnsaveRecipe}
+              />
+            </motion.div>
+          )}
+
+          {currentView === "favorites" && (
+            <motion.div
+              key="favorites"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              <RecipesView
+                recipes={filteredRecipes.filter((r) => r.isSavedFromLibrary === true)}
+                loading={loading}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                selectedTags={selectedTags}
+                setSelectedTags={setSelectedTags}
+                allTags={allTags}
+                onAddRecipe={null}
+                onEditRecipe={handleEditRecipe}
+                onDeleteRecipe={handleDeleteRecipe}
+                onUnsaveRecipe={handleUnsaveRecipe}
+                emptyStateTitle="No favorites yet"
+                emptyStateMessage="Tap the heart on any recipe to save it here."
+                viewTitle="Favorites"
+                viewSubtitle="Recipes you've saved from the library"
               />
             </motion.div>
           )}
