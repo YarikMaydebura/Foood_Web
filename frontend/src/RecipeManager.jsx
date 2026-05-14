@@ -138,6 +138,31 @@ const api = {
     }
   },
 
+  getLibraryRecipes: async () => {
+    // Page through /library/recipes (public, no auth required) until exhausted.
+    const PAGE_SIZE = 100;
+    const items = [];
+    let offset = 0;
+    try {
+      while (true) {
+        const response = await fetch(
+          `${API_BASE_URL}/library/recipes?limit=${PAGE_SIZE}&offset=${offset}`,
+          { headers: getAuthHeaders() }
+        );
+        if (!response.ok) break;
+        const data = await response.json();
+        const page = data.items || [];
+        items.push(...page);
+        if (!data.has_more || page.length === 0) break;
+        offset += page.length;
+        if (offset > 1000) break; // safety stop
+      }
+      return { items };
+    } catch (err) {
+      return { error: "Network error", items };
+    }
+  },
+
   createRecipe: async (recipe) => {
     try {
       const response = await fetch(`${API_BASE_URL}/recipes`, {
@@ -2000,29 +2025,47 @@ const RecipeManager = () => {
     setError("");
 
     try {
-      // Fetch both user's own recipes and saved library recipes
-      const [userResult, savedResult] = await Promise.all([
+      // Fetch user's own recipes, saved library recipes, and the full public library in parallel.
+      const [userResult, savedResult, libraryResult] = await Promise.all([
         api.getRecipes(),
-        api.getSavedRecipes()
+        api.getSavedRecipes(),
+        api.getLibraryRecipes(),
       ]);
 
-      // Handle errors gracefully - show whatever data we have
       const userRecipes = (userResult.items || userResult.recipes || []).map(r => ({
         ...r,
-        source: r.source || 'user'
+        source: r.source || 'user',
       }));
 
       const savedRecipes = (savedResult.items || []).map(r => ({
         ...r,
         source: 'library',
-        isSavedFromLibrary: true
+        isSavedFromLibrary: true,
       }));
 
-      // Combine both lists
-      setRecipes([...userRecipes, ...savedRecipes]);
+      const libraryRecipes = (libraryResult.items || []).map(r => ({
+        ...r,
+        source: 'library',
+        isSavedFromLibrary: r.is_saved === true,
+      }));
 
-      // Only show error if BOTH failed and no data
-      if (userResult.error && savedResult.error && userRecipes.length === 0 && savedRecipes.length === 0) {
+      // Merge with dedupe by id. Saved entries win over plain library entries
+      // (they carry recipe_ingredients + the saved flag), and user-owned recipes
+      // always take precedence over both.
+      const byId = new Map();
+      for (const r of libraryRecipes) byId.set(r.id, r);
+      for (const r of savedRecipes) byId.set(r.id, { ...byId.get(r.id), ...r });
+      for (const r of userRecipes) byId.set(r.id, r);
+
+      setRecipes([...byId.values()]);
+
+      // Only surface an error if every source failed and we have nothing to show.
+      if (
+        userResult.error &&
+        savedResult.error &&
+        libraryResult.error &&
+        byId.size === 0
+      ) {
         setError("Unable to load recipes");
       }
     } catch (err) {
