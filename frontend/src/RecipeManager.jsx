@@ -1182,23 +1182,44 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
 // Set opacity to 50%
 // Updated input and button styling
 // Improved spacing and form layout
-const RecipeFormModal = ({ recipe, onClose, onSave }) => {
-  // Debug: Log recipe data to console
-  console.log("Recipe data:", recipe);
-  console.log("Recipe ingredients:", recipe?.recipe_ingredients);
-  console.log("Recipe tags:", recipe?.tags);
+const CATEGORY_OPTIONS = ["meal", "dessert", "snack", "drink"];
+const DIFFICULTY_OPTIONS = ["easy", "medium", "hard"];
 
+const RecipeFormModal = ({ recipe, onClose, onSave }) => {
   const [title, setTitle] = useState(recipe?.title || "");
+  const [description, setDescription] = useState(recipe?.description || "");
   const [image, setImage] = useState(recipe?.image_url || "");
-  const [imageFile, setImageFile] = useState(null);
   const [tags, setTags] = useState(
     recipe?.tags?.map(t => typeof t === 'string' ? t : t.name).join(", ") || ""
   );
+  const [cuisine, setCuisine] = useState(recipe?.cuisine || "");
+  const [category, setCategory] = useState(recipe?.category || "meal");
+  const [difficulty, setDifficulty] = useState(recipe?.difficulty || "");
+  const [prepTime, setPrepTime] = useState(recipe?.prep_time_minutes ?? "");
+  const [cookTime, setCookTime] = useState(recipe?.cook_time_minutes ?? "");
+  const [servings, setServings] = useState(recipe?.servings ?? 4);
+  const [calories, setCalories] = useState(recipe?.calories ?? "");
+  const [protein, setProtein] = useState(recipe?.protein_g ?? "");
+  const [carbs, setCarbs] = useState(recipe?.carbs_g ?? "");
+  const [fat, setFat] = useState(recipe?.fat_g ?? "");
+  const [fiber, setFiber] = useState(recipe?.fiber_g ?? "");
+  const [sugar, setSugar] = useState(recipe?.sugar_g ?? "");
+  const [sodium, setSodium] = useState(recipe?.sodium_mg ?? "");
+  const [cholesterol, setCholesterol] = useState(recipe?.cholesterol_mg ?? "");
+  const [showNutrition, setShowNutrition] = useState(false);
   const [ingredients, setIngredients] = useState(
     recipe?.recipe_ingredients?.map(ri => ri.ingredient?.name || ri.ingredient_name).join("\n") || ""
   );
   const [instructions, setInstructions] = useState(recipe?.instructions || "");
   const [error, setError] = useState("");
+  const [cuisineSuggestions, setCuisineSuggestions] = useState([]);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/library/cuisines`)
+      .then((r) => (r.ok ? r.json() : { cuisines: [] }))
+      .then((data) => setCuisineSuggestions(data.cuisines || []))
+      .catch(() => {});
+  }, []);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -1232,7 +1253,6 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
           const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
 
           setImage(compressedDataUrl);
-          setImageFile(file);
         };
         img.src = reader.result;
       };
@@ -1290,10 +1310,35 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
     if (!ingredients.trim()) return setError("Ingredients are required");
     if (!instructions.trim()) return setError("Instructions are required");
 
+    const toIntOrNull = (v) => {
+      if (v === "" || v == null) return null;
+      const n = parseInt(v, 10);
+      return Number.isFinite(n) ? n : null;
+    };
+    const toFloatOrNull = (v) => {
+      if (v === "" || v == null) return null;
+      const n = parseFloat(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
     onSave({
       title: title.trim(),
       image_url: image.trim(),
-      description: "",
+      description: description.trim() || null,
+      cuisine: cuisine.trim() || null,
+      category: category || null,
+      difficulty: difficulty || null,
+      prep_time_minutes: toIntOrNull(prepTime),
+      cook_time_minutes: toIntOrNull(cookTime),
+      servings: toIntOrNull(servings) ?? 4,
+      calories: toIntOrNull(calories),
+      protein_g: toFloatOrNull(protein),
+      carbs_g: toFloatOrNull(carbs),
+      fat_g: toFloatOrNull(fat),
+      fiber_g: toFloatOrNull(fiber),
+      sugar_g: toFloatOrNull(sugar),
+      sodium_mg: toFloatOrNull(sodium),
+      cholesterol_mg: toFloatOrNull(cholesterol),
       tags: tags
         .split(",")
         .map((t) => capitalizeTag(t.trim()))
@@ -1324,7 +1369,7 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md sm:max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-md sm:max-w-3xl max-h-[90vh] overflow-y-auto"
       >
         <div className="p-4 sm:p-8">
           <div className="flex items-center justify-between mb-6">
@@ -1342,85 +1387,222 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
             </div>
           )}
 
-          <div className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Recipe Title *</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Spaghetti Carbonara"
-                className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Image</label>
-              <div className="space-y-3">
-                <div>
+          <div className="space-y-6">
+            {/* Basics */}
+            <section className="bg-gray-50/60 rounded-xl p-4 sm:p-5">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Basics</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Recipe Title *</label>
                   <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-orange-500 transition-all file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200 cursor-pointer"
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g., Spaghetti Carbonara"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                   />
                 </div>
-                <div className="text-center text-sm text-gray-400">or enter URL</div>
-                <div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
                   <input
-                    type="url"
-                    value={image}
-                    onChange={(e) => setImage(e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                    className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all"
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Short summary that shows on the card"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                   />
                 </div>
-                {image && (
-                  <div className="mt-2">
-                    <img src={image} alt="Preview" className="w-32 h-32 object-cover rounded-xl shadow-sm" />
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Image</label>
+                  {image && (
+                    <div className="mb-3">
+                      <img src={image} alt="Preview" className="w-full h-40 object-cover rounded-xl shadow-sm" />
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-orange-100 file:text-orange-700 hover:file:bg-orange-200 cursor-pointer"
+                    />
+                    <input
+                      type="url"
+                      value={image}
+                      onChange={(e) => setImage(e.target.value)}
+                      placeholder="or paste image URL"
+                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                    />
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+            </section>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tags (comma-separated)
-              </label>
-              <input
-                type="text"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="e.g., Italian, Dinner, Quick"
-                className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all"
-              />
-            </div>
+            {/* Classification */}
+            <section className="bg-gray-50/60 rounded-xl p-4 sm:p-5">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Classification</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Cuisine</label>
+                  <input
+                    list="cuisine-suggestions"
+                    type="text"
+                    value={cuisine}
+                    onChange={(e) => setCuisine(e.target.value)}
+                    placeholder="e.g., Italian"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                  />
+                  <datalist id="cuisine-suggestions">
+                    {cuisineSuggestions.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                  >
+                    {CATEGORY_OPTIONS.map((c) => (
+                      <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Difficulty</label>
+                  <div className="flex gap-2">
+                    {DIFFICULTY_OPTIONS.map((d) => {
+                      const active = difficulty === d;
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setDifficulty(active ? "" : d)}
+                          className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-medium capitalize transition-colors border ${
+                            active
+                              ? 'bg-orange-500 text-white border-orange-500'
+                              : 'bg-white text-gray-700 border-gray-200 hover:border-orange-300'
+                          }`}
+                        >
+                          {d}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Tags</label>
+                  <input
+                    type="text"
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                    placeholder="comma-separated: Italian, Dinner, Quick"
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                  />
+                </div>
+              </div>
+            </section>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ingredients (one per line) *
-              </label>
-              <textarea
-                value={ingredients}
-                onChange={(e) => setIngredients(e.target.value)}
-                rows={4}
-                placeholder="e.g., 200g pasta&#10;2 eggs&#10;100g pancetta"
-                className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all resize-none"
-              />
-            </div>
+            {/* Time & Servings */}
+            <section className="bg-gray-50/60 rounded-xl p-4 sm:p-5">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Time & Servings</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Prep (min)</label>
+                  <input
+                    type="number" min="0"
+                    value={prepTime}
+                    onChange={(e) => setPrepTime(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Cook (min)</label>
+                  <input
+                    type="number" min="0"
+                    value={cookTime}
+                    onChange={(e) => setCookTime(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Servings</label>
+                  <input
+                    type="number" min="1"
+                    value={servings}
+                    onChange={(e) => setServings(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                  />
+                </div>
+              </div>
+            </section>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Instructions *</label>
-              <textarea
-                value={instructions}
-                onChange={(e) => setInstructions(e.target.value)}
-                rows={4}
-                placeholder="Step-by-step cooking instructions..."
-                className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all resize-none"
-              />
-            </div>
+            {/* Nutrition (collapsible) */}
+            <section className="bg-gray-50/60 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setShowNutrition((v) => !v)}
+                className="w-full flex items-center justify-between p-4 sm:p-5 text-left"
+              >
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Nutrition per serving</h3>
+                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${showNutrition ? 'rotate-180' : ''}`} />
+              </button>
+              {showNutrition && (
+                <div className="px-4 pb-5 sm:px-5 grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    ["Calories (kcal)", calories, setCalories],
+                    ["Protein (g)", protein, setProtein],
+                    ["Carbs (g)", carbs, setCarbs],
+                    ["Fat (g)", fat, setFat],
+                    ["Fiber (g)", fiber, setFiber],
+                    ["Sugar (g)", sugar, setSugar],
+                    ["Sodium (mg)", sodium, setSodium],
+                    ["Cholesterol (mg)", cholesterol, setCholesterol],
+                  ].map(([label, val, setter]) => (
+                    <div key={label}>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+                      <input
+                        type="number" min="0" step="0.1"
+                        value={val}
+                        onChange={(e) => setter(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
 
-            <div className="flex gap-4 pt-4">
+            {/* Ingredients & Instructions */}
+            <section className="bg-gray-50/60 rounded-xl p-4 sm:p-5">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Ingredients & Instructions</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Ingredients (one per line) *</label>
+                  <textarea
+                    value={ingredients}
+                    onChange={(e) => setIngredients(e.target.value)}
+                    rows={8}
+                    placeholder="200g pasta&#10;2 eggs&#10;100g pancetta"
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all resize-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Instructions *</label>
+                  <textarea
+                    value={instructions}
+                    onChange={(e) => setInstructions(e.target.value)}
+                    rows={8}
+                    placeholder="Step-by-step cooking instructions..."
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all resize-none"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <div className="flex gap-4 pt-2">
               <button
                 onClick={onClose}
                 className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition font-medium"
