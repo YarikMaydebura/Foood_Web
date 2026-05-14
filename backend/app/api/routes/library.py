@@ -24,6 +24,12 @@ def list_library_recipes(
     category: Optional[str] = Query(default=None),
     difficulty: Optional[str] = Query(default=None),
     search: Optional[str] = Query(default=None),
+    min_calories: Optional[int] = Query(default=None, ge=0),
+    max_calories: Optional[int] = Query(default=None, ge=0),
+    min_protein: Optional[float] = Query(default=None, ge=0),
+    max_carbs: Optional[float] = Query(default=None, ge=0),
+    max_total_time: Optional[int] = Query(default=None, ge=0, description="prep + cook minutes"),
+    tags: Optional[list[str]] = Query(default=None, description="Filter by tag names; recipes match ANY tag"),
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_current_user)
 ):
@@ -34,7 +40,7 @@ def list_library_recipes(
     """
     query = select(Recipe).where(Recipe.is_public == True)
 
-    # Apply filters
+    # Existing filters
     if cuisine:
         query = query.where(Recipe.cuisine == cuisine)
     if category:
@@ -44,13 +50,42 @@ def list_library_recipes(
     if search:
         query = query.where(Recipe.title.ilike(f"%{search}%"))
 
+    # Nutrition / time filters
+    if min_calories is not None:
+        query = query.where(Recipe.calories >= min_calories)
+    if max_calories is not None:
+        query = query.where(Recipe.calories <= max_calories)
+    if min_protein is not None:
+        query = query.where(Recipe.protein_g >= min_protein)
+    if max_carbs is not None:
+        query = query.where(Recipe.carbs_g <= max_carbs)
+    if max_total_time is not None:
+        query = query.where(
+            (func.coalesce(Recipe.prep_time_minutes, 0) + func.coalesce(Recipe.cook_time_minutes, 0))
+            <= max_total_time
+        )
+
+    # Tag filter: recipes matching ANY of the supplied tag names (case-insensitive)
+    if tags:
+        normalized = [t.strip().lower() for t in tags if t and t.strip()]
+        if normalized:
+            tag_subquery = (
+                select(Recipe.id)
+                .join(Recipe.tags)
+                .where(func.lower(Tag.name).in_(normalized))
+                .distinct()
+            )
+            query = query.where(Recipe.id.in_(tag_subquery))
+
     # Get total count
     count_query = select(func.count()).select_from(query.subquery())
     total = db.scalar(count_query)
 
     # Apply pagination and ordering
     query = query.order_by(Recipe.title).offset(offset).limit(limit)
-    recipes = db.scalars(query).all()
+    recipes = db.scalars(
+        query.options(joinedload(Recipe.tags))
+    ).unique().all()
 
     # Get user's saved recipe IDs if authenticated
     saved_recipe_ids = set()
@@ -62,7 +97,7 @@ def list_library_recipes(
         ).all()
         saved_recipe_ids = set(saved)
 
-    # Add is_saved flag to recipes
+    # Add is_saved flag + nutrition + tags to recipes
     items = []
     for recipe in recipes:
         recipe_dict = {
@@ -78,6 +113,10 @@ def list_library_recipes(
             "cook_time_minutes": recipe.cook_time_minutes,
             "servings": recipe.servings,
             "calories": recipe.calories,
+            "protein_g": recipe.protein_g,
+            "carbs_g": recipe.carbs_g,
+            "fat_g": recipe.fat_g,
+            "tags": [t.name for t in recipe.tags],
             "is_saved": recipe.id in saved_recipe_ids
         }
         items.append(recipe_dict)

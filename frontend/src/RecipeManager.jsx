@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -20,6 +20,8 @@ import {
   Compass,
   Flame,
   ChefHat,
+  SlidersHorizontal,
+  AlertTriangle,
 } from "lucide-react";
 import RecipeLibrary from "./components/RecipeLibrary";
 
@@ -1407,9 +1409,105 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
 
 const SLOT_CAP = 5;
 
+const DIET_TAG_OPTIONS = ["Vegan", "Vegetarian", "Healthy", "Keto", "Gluten-Free"];
+const DEFAULT_DAILY_TARGET = 2000;
+
 const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomizerMode }) => {
   const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const meals = ["Breakfast", "Lunch", "Dinner", "Dessert/Snacking"];
+
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedDietTags, setSelectedDietTags] = useState([]);
+  const [minCalories, setMinCalories] = useState("");
+  const [maxCalories, setMaxCalories] = useState("");
+  const [minProtein, setMinProtein] = useState("");
+  const [maxCarbs, setMaxCarbs] = useState("");
+  const [maxTotalTime, setMaxTotalTime] = useState("");
+
+  const [dailyTarget, setDailyTarget] = useState(() => {
+    const stored = parseInt(localStorage.getItem("dailyCalorieTarget"), 10);
+    return Number.isFinite(stored) && stored > 0 ? stored : DEFAULT_DAILY_TARGET;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("dailyCalorieTarget", String(dailyTarget));
+  }, [dailyTarget]);
+
+  const toggleDietTag = (tag) => {
+    setSelectedDietTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const recipeTagNames = (recipe) =>
+    (recipe.tags || []).map((t) =>
+      typeof t === "string" ? t.toLowerCase() : (t.name || "").toLowerCase()
+    );
+
+  const filteredRecipes = useMemo(() => {
+    const minCal = minCalories === "" ? null : Number(minCalories);
+    const maxCal = maxCalories === "" ? null : Number(maxCalories);
+    const minPro = minProtein === "" ? null : Number(minProtein);
+    const maxCar = maxCarbs === "" ? null : Number(maxCarbs);
+    const maxTime = maxTotalTime === "" ? null : Number(maxTotalTime);
+    const wantedTags = selectedDietTags.map((t) => t.toLowerCase());
+
+    return recipes.filter((r) => {
+      if (wantedTags.length > 0) {
+        const names = recipeTagNames(r);
+        if (!wantedTags.some((t) => names.includes(t))) return false;
+      }
+      if (minCal != null && r.calories != null && r.calories < minCal) return false;
+      if (maxCal != null && r.calories != null && r.calories > maxCal) return false;
+      if (minPro != null && r.protein_g != null && r.protein_g < minPro) return false;
+      if (maxCar != null && r.carbs_g != null && r.carbs_g > maxCar) return false;
+      if (maxTime != null) {
+        const total = (r.prep_time_minutes || 0) + (r.cook_time_minutes || 0);
+        if (total > maxTime) return false;
+      }
+      return true;
+    });
+  }, [recipes, selectedDietTags, minCalories, maxCalories, minProtein, maxCarbs, maxTotalTime]);
+
+  const recipesById = useMemo(() => {
+    const map = new Map();
+    for (const r of recipes) map.set(r.id, r);
+    return map;
+  }, [recipes]);
+
+  const dayTotalCalories = (day) => {
+    const dayPlan = mealPlan[day] || {};
+    let total = 0;
+    for (const meal of meals) {
+      const raw = dayPlan[meal];
+      const ids = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+      for (const id of ids) {
+        const recipe = recipesById.get(id);
+        if (recipe?.calories != null) total += recipe.calories;
+      }
+    }
+    return total;
+  };
+
+  const budgetColorClass = (total, target) => {
+    if (total === 0) return "text-gray-400";
+    if (total <= target) return "text-emerald-600";
+    if (total <= target * 1.1) return "text-amber-600";
+    return "text-red-600";
+  };
+
+  const activeFilterCount =
+    selectedDietTags.length +
+    [minCalories, maxCalories, minProtein, maxCarbs, maxTotalTime].filter((v) => v !== "").length;
+
+  const clearFilters = () => {
+    setSelectedDietTags([]);
+    setMinCalories("");
+    setMaxCalories("");
+    setMinProtein("");
+    setMaxCarbs("");
+    setMaxTotalTime("");
+  };
 
   // Slots are arrays of recipe IDs. Normalize legacy single-int values to a 1-element array.
   const slotIds = (day, meal) => {
@@ -1458,9 +1556,11 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
     const pickRandom = (pool) =>
       pool.length === 0 ? null : pool[Math.floor(Math.random() * pool.length)].id;
 
+    const pool = filteredRecipes;
+
     const getRandomRecipeForMeal = (mealType) => {
       if (randomizerMode === 'full-random') {
-        return pickRandom(recipes);
+        return pickRandom(pool);
       }
       const tagMapping = {
         'Breakfast': ['breakfast'],
@@ -1469,14 +1569,14 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
         'Dessert/Snacking': ['dessert', 'sweet', 'snack'],
       };
       const matchingKeywords = tagMapping[mealType] || [];
-      const matching = recipes.filter((r) => {
+      const matching = pool.filter((r) => {
         if (!r.tags || r.tags.length === 0) return false;
         return r.tags.some((tag) => {
           const tagName = typeof tag === 'string' ? tag.toLowerCase() : tag.name.toLowerCase();
           return matchingKeywords.some((keyword) => tagName.includes(keyword));
         });
       });
-      return pickRandom(matching) ?? pickRandom(recipes);
+      return pickRandom(matching) ?? pickRandom(pool);
     };
 
     days.forEach((day) => {
@@ -1523,6 +1623,129 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
         </div>
       </div>
 
+      {/* Filters + daily calorie budget */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-4 sm:mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 sm:p-4">
+          <button
+            type="button"
+            onClick={() => setShowFilters((v) => !v)}
+            className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors"
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="ml-1 inline-flex items-center justify-center w-5 h-5 text-xs font-semibold text-white bg-orange-500 rounded-full">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <Flame className="w-4 h-4 text-orange-500" />
+            <span className="font-medium">Daily target</span>
+            <input
+              type="number"
+              min="0"
+              step="50"
+              value={dailyTarget}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (Number.isFinite(v) && v >= 0) setDailyTarget(v);
+              }}
+              className="w-24 px-2 py-1 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+            />
+            <span className="text-gray-500">kcal</span>
+          </label>
+        </div>
+
+        {showFilters && (
+          <div className="border-t border-gray-100 p-3 sm:p-4 space-y-4">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Diet</p>
+              <div className="flex flex-wrap gap-2">
+                {DIET_TAG_OPTIONS.map((tag) => {
+                  const active = selectedDietTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleDietTag(tag)}
+                      className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                        active
+                          ? 'bg-emerald-500 text-white border-emerald-500'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-emerald-300'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Min kcal</label>
+                <input
+                  type="number" min="0" step="50"
+                  value={minCalories}
+                  onChange={(e) => setMinCalories(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Max kcal</label>
+                <input
+                  type="number" min="0" step="50"
+                  value={maxCalories}
+                  onChange={(e) => setMaxCalories(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Min protein (g)</label>
+                <input
+                  type="number" min="0" step="5"
+                  value={minProtein}
+                  onChange={(e) => setMinProtein(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Max carbs (g)</label>
+                <input
+                  type="number" min="0" step="5"
+                  value={maxCarbs}
+                  onChange={(e) => setMaxCarbs(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Max total time (min)</label>
+                <input
+                  type="number" min="0" step="5"
+                  value={maxTotalTime}
+                  onChange={(e) => setMaxTotalTime(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500">
+                Showing <span className="font-semibold text-gray-700">{filteredRecipes.length}</span> of {recipes.length} recipes
+              </span>
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="text-orange-600 hover:text-orange-700 font-medium"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       {recipes.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
           <div className="w-20 h-20 bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -1550,9 +1773,20 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
               </tr>
             </thead>
             <tbody>
-              {days.map((day, dayIndex) => (
+              {days.map((day, dayIndex) => {
+                const dayTotal = dayTotalCalories(day);
+                const overBudget = dayTotal > dailyTarget * 1.1;
+                return (
                 <tr key={day} className={`border-b border-gray-100 hover:bg-orange-50/50 transition-colors ${dayIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                  <td className="p-2 sm:p-3 text-xs sm:text-sm font-semibold text-gray-800">{day}</td>
+                  <td className="p-2 sm:p-3 align-top">
+                    <div className="text-xs sm:text-sm font-semibold text-gray-800">{day}</div>
+                    {dayTotal > 0 && (
+                      <div className={`mt-1 inline-flex items-center gap-1 text-[10px] sm:text-xs font-medium ${budgetColorClass(dayTotal, dailyTarget)}`}>
+                        {overBudget && <AlertTriangle className="w-3 h-3" />}
+                        <span>{dayTotal.toLocaleString()} / {dailyTarget.toLocaleString()} kcal</span>
+                      </div>
+                    )}
+                  </td>
                   {meals.map((meal) => {
                     const ids = slotIds(day, meal);
                     const atCap = ids.length >= SLOT_CAP;
@@ -1606,7 +1840,7 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
                               <option value="">
                                 {ids.length === 0 ? '+ Add recipe' : `+ Add (${ids.length}/${SLOT_CAP})`}
                               </option>
-                              {recipes.map((r) => (
+                              {filteredRecipes.map((r) => (
                                 <option key={r.id} value={r.id}>
                                   {r.title}
                                 </option>
@@ -1623,7 +1857,8 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
                     );
                   })}
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
