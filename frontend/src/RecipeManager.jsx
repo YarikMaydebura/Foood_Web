@@ -1758,6 +1758,32 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
     onSavePlan(newPlan);
   };
 
+  // Drag-and-drop state
+  const [dragOverCell, setDragOverCell] = useState(null); // { day, meal } | null
+  const [dndToast, setDndToast] = useState("");
+
+  useEffect(() => {
+    if (!dndToast) return;
+    const t = setTimeout(() => setDndToast(""), 2000);
+    return () => clearTimeout(t);
+  }, [dndToast]);
+
+  const moveDish = (srcDay, srcMeal, srcIndex, tgtDay, tgtMeal) => {
+    if (srcDay === tgtDay && srcMeal === tgtMeal) return; // same slot, no-op
+    const srcIds = slotIds(srcDay, srcMeal);
+    const tgtIds = slotIds(tgtDay, tgtMeal);
+    if (tgtIds.length >= SLOT_CAP) {
+      setDndToast(`${tgtDay} ${tgtMeal} is full (${SLOT_CAP}/${SLOT_CAP})`);
+      return;
+    }
+    const moved = srcIds[srcIndex];
+    if (moved == null) return;
+    let plan = setSlot(mealPlan, srcDay, srcMeal, srcIds.filter((_, i) => i !== srcIndex));
+    plan = setSlot(plan, tgtDay, tgtMeal, [...tgtIds, moved]);
+    setMealPlan(plan);
+    onSavePlan(plan);
+  };
+
   const clearAllMeals = () => {
     if (window.confirm("Are you sure you want to clear all meals from this week's plan?")) {
       setMealPlan({});
@@ -2006,9 +2032,41 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
                   {meals.map((meal) => {
                     const ids = slotIds(day, meal);
                     const atCap = ids.length >= SLOT_CAP;
+                    const isDropTarget = dragOverCell?.day === day && dragOverCell?.meal === meal;
 
                     return (
-                      <td key={meal} className="p-2 sm:p-3 align-top">
+                      <td
+                        key={meal}
+                        className={`p-2 sm:p-3 align-top transition-shadow ${
+                          isDropTarget ? 'ring-2 ring-emerald-400 rounded-xl' : ''
+                        }`}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                        }}
+                        onDragEnter={(e) => {
+                          e.preventDefault();
+                          setDragOverCell({ day, meal });
+                        }}
+                        onDragLeave={(e) => {
+                          // Only clear if leaving the <td> itself, not bubbling from children
+                          if (e.currentTarget.contains(e.relatedTarget)) return;
+                          setDragOverCell((prev) =>
+                            prev?.day === day && prev?.meal === meal ? null : prev
+                          );
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setDragOverCell(null);
+                          try {
+                            const data = JSON.parse(e.dataTransfer.getData('application/json'));
+                            if (!data || data.srcDay == null) return;
+                            moveDish(data.srcDay, data.srcMeal, data.srcIndex, day, meal);
+                          } catch {
+                            /* ignore non-JSON drops */
+                          }
+                        }}
+                      >
                         <div className="space-y-1.5">
                           {ids.map((recipeId, index) => {
                             const recipe = recipes.find((r) => r.id === recipeId);
@@ -2016,7 +2074,16 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
                             return (
                               <div
                                 key={`${recipeId}-${index}`}
-                                className="bg-gradient-to-r from-orange-100 to-amber-100 rounded-xl p-2 sm:p-3 relative group"
+                                draggable
+                                onDragStart={(e) => {
+                                  e.dataTransfer.effectAllowed = 'move';
+                                  e.dataTransfer.setData(
+                                    'application/json',
+                                    JSON.stringify({ srcDay: day, srcMeal: meal, srcIndex: index, recipeId })
+                                  );
+                                }}
+                                className="bg-gradient-to-r from-orange-100 to-amber-100 rounded-xl p-2 sm:p-3 relative group cursor-grab active:cursor-grabbing"
+                                title="Drag to move to another slot"
                               >
                                 <p className="text-xs sm:text-sm font-medium text-gray-800 pr-6 line-clamp-2">
                                   {recipe.title}
@@ -2078,6 +2145,17 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
             </tbody>
           </table>
         </div>
+      )}
+
+      {dndToast && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-full shadow-lg"
+        >
+          {dndToast}
+        </motion.div>
       )}
     </div>
   );
