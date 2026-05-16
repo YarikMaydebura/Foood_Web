@@ -1595,12 +1595,40 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
   const meals = ["Breakfast", "Lunch", "Dinner", "Dessert/Snacking"];
 
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedDietTags, setSelectedDietTags] = useState([]);
-  const [minCalories, setMinCalories] = useState("");
-  const [maxCalories, setMaxCalories] = useState("");
-  const [minProtein, setMinProtein] = useState("");
-  const [maxCarbs, setMaxCarbs] = useState("");
-  const [maxTotalTime, setMaxTotalTime] = useState("");
+  // Pending = bound to inputs. Applied = used by cells + randomize.
+  // The split lets the user adjust filters, see a live count preview,
+  // then commit them all at once via Apply.
+  const EMPTY_FILTERS = {
+    selectedDietTags: [],
+    minCalories: "",
+    maxCalories: "",
+    minProtein: "",
+    maxCarbs: "",
+    maxTotalTime: "",
+  };
+  const [pendingFilters, setPendingFilters] = useState(EMPTY_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS);
+
+  const setPendingField = (key, value) =>
+    setPendingFilters((prev) => ({ ...prev, [key]: value }));
+
+  const togglePendingDietTag = (tag) =>
+    setPendingFilters((prev) => ({
+      ...prev,
+      selectedDietTags: prev.selectedDietTags.includes(tag)
+        ? prev.selectedDietTags.filter((t) => t !== tag)
+        : [...prev.selectedDietTags, tag],
+    }));
+
+  const filtersDiffer = useMemo(() => {
+    return JSON.stringify(pendingFilters) !== JSON.stringify(appliedFilters);
+  }, [pendingFilters, appliedFilters]);
+
+  const applyFilters = () => setAppliedFilters(pendingFilters);
+  const resetFilters = () => {
+    setPendingFilters(EMPTY_FILTERS);
+    setAppliedFilters(EMPTY_FILTERS);
+  };
 
   const [dailyTarget, setDailyTarget] = useState(() => {
     const stored = parseInt(localStorage.getItem("dailyCalorieTarget"), 10);
@@ -1611,24 +1639,18 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
     localStorage.setItem("dailyCalorieTarget", String(dailyTarget));
   }, [dailyTarget]);
 
-  const toggleDietTag = (tag) => {
-    setSelectedDietTags((prev) =>
-      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-    );
-  };
-
   const recipeTagNames = (recipe) =>
     (recipe.tags || []).map((t) =>
       typeof t === "string" ? t.toLowerCase() : (t.name || "").toLowerCase()
     );
 
-  const filteredRecipes = useMemo(() => {
-    const minCal = minCalories === "" ? null : Number(minCalories);
-    const maxCal = maxCalories === "" ? null : Number(maxCalories);
-    const minPro = minProtein === "" ? null : Number(minProtein);
-    const maxCar = maxCarbs === "" ? null : Number(maxCarbs);
-    const maxTime = maxTotalTime === "" ? null : Number(maxTotalTime);
-    const wantedTags = selectedDietTags.map((t) => t.toLowerCase());
+  const applyFilterToRecipes = (filters) => {
+    const minCal = filters.minCalories === "" ? null : Number(filters.minCalories);
+    const maxCal = filters.maxCalories === "" ? null : Number(filters.maxCalories);
+    const minPro = filters.minProtein === "" ? null : Number(filters.minProtein);
+    const maxCar = filters.maxCarbs === "" ? null : Number(filters.maxCarbs);
+    const maxTime = filters.maxTotalTime === "" ? null : Number(filters.maxTotalTime);
+    const wantedTags = filters.selectedDietTags.map((t) => t.toLowerCase());
 
     return recipes.filter((r) => {
       if (wantedTags.length > 0) {
@@ -1645,7 +1667,20 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
       }
       return true;
     });
-  }, [recipes, selectedDietTags, minCalories, maxCalories, minProtein, maxCarbs, maxTotalTime]);
+  };
+
+  // Live preview: count and panel display.
+  const pendingFilteredRecipes = useMemo(
+    () => applyFilterToRecipes(pendingFilters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [recipes, pendingFilters]
+  );
+  // Stable: drives cell dropdowns + randomize.
+  const filteredRecipes = useMemo(
+    () => applyFilterToRecipes(appliedFilters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [recipes, appliedFilters]
+  );
 
   const recipesById = useMemo(() => {
     const map = new Map();
@@ -1674,18 +1709,15 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
     return "text-red-600";
   };
 
-  const activeFilterCount =
-    selectedDietTags.length +
-    [minCalories, maxCalories, minProtein, maxCarbs, maxTotalTime].filter((v) => v !== "").length;
-
-  const clearFilters = () => {
-    setSelectedDietTags([]);
-    setMinCalories("");
-    setMaxCalories("");
-    setMinProtein("");
-    setMaxCarbs("");
-    setMaxTotalTime("");
-  };
+  const activeAppliedFilterCount =
+    appliedFilters.selectedDietTags.length +
+    [
+      appliedFilters.minCalories,
+      appliedFilters.maxCalories,
+      appliedFilters.minProtein,
+      appliedFilters.maxCarbs,
+      appliedFilters.maxTotalTime,
+    ].filter((v) => v !== "").length;
 
   // Slots are arrays of recipe IDs. Normalize legacy single-int values to a 1-element array.
   const slotIds = (day, meal) => {
@@ -1861,10 +1893,13 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
           >
             <SlidersHorizontal className="w-4 h-4" />
             <span>Filters</span>
-            {activeFilterCount > 0 && (
+            {activeAppliedFilterCount > 0 && (
               <span className="ml-1 inline-flex items-center justify-center w-5 h-5 text-xs font-semibold text-white bg-orange-500 rounded-full">
-                {activeFilterCount}
+                {activeAppliedFilterCount}
               </span>
+            )}
+            {filtersDiffer && (
+              <span className="ml-1 w-2 h-2 rounded-full bg-amber-500" title="Unsaved filter changes" />
             )}
           </button>
           <label className="flex items-center gap-2 text-sm text-gray-700">
@@ -1891,12 +1926,12 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Diet</p>
               <div className="flex flex-wrap gap-2">
                 {DIET_TAG_OPTIONS.map((tag) => {
-                  const active = selectedDietTags.includes(tag);
+                  const active = pendingFilters.selectedDietTags.includes(tag);
                   return (
                     <button
                       key={tag}
                       type="button"
-                      onClick={() => toggleDietTag(tag)}
+                      onClick={() => togglePendingDietTag(tag)}
                       className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
                         active
                           ? 'bg-emerald-500 text-white border-emerald-500'
@@ -1914,8 +1949,8 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Min kcal</label>
                 <input
                   type="number" min="0" step="50"
-                  value={minCalories}
-                  onChange={(e) => setMinCalories(e.target.value)}
+                  value={pendingFilters.minCalories}
+                  onChange={(e) => setPendingField("minCalories", e.target.value)}
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 />
               </div>
@@ -1923,8 +1958,8 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Max kcal</label>
                 <input
                   type="number" min="0" step="50"
-                  value={maxCalories}
-                  onChange={(e) => setMaxCalories(e.target.value)}
+                  value={pendingFilters.maxCalories}
+                  onChange={(e) => setPendingField("maxCalories", e.target.value)}
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 />
               </div>
@@ -1932,8 +1967,8 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Min protein (g)</label>
                 <input
                   type="number" min="0" step="5"
-                  value={minProtein}
-                  onChange={(e) => setMinProtein(e.target.value)}
+                  value={pendingFilters.minProtein}
+                  onChange={(e) => setPendingField("minProtein", e.target.value)}
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 />
               </div>
@@ -1941,8 +1976,8 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Max carbs (g)</label>
                 <input
                   type="number" min="0" step="5"
-                  value={maxCarbs}
-                  onChange={(e) => setMaxCarbs(e.target.value)}
+                  value={pendingFilters.maxCarbs}
+                  onChange={(e) => setPendingField("maxCarbs", e.target.value)}
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 />
               </div>
@@ -1950,25 +1985,40 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
                 <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Max total time (min)</label>
                 <input
                   type="number" min="0" step="5"
-                  value={maxTotalTime}
-                  onChange={(e) => setMaxTotalTime(e.target.value)}
+                  value={pendingFilters.maxTotalTime}
+                  onChange={(e) => setPendingField("maxTotalTime", e.target.value)}
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                 />
               </div>
             </div>
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">
-                Showing <span className="font-semibold text-gray-700">{filteredRecipes.length}</span> of {recipes.length} recipes
+            <div className="flex items-center justify-between gap-3 flex-wrap pt-2">
+              <span className="text-xs text-gray-500">
+                Preview: <span className="font-semibold text-gray-700">{pendingFilteredRecipes.length}</span> of {recipes.length} recipes
+                {filtersDiffer && (
+                  <span className="ml-2 text-amber-600">— click Apply to use these filters</span>
+                )}
               </span>
-              {activeFilterCount > 0 && (
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={clearFilters}
-                  className="text-orange-600 hover:text-orange-700 font-medium"
+                  onClick={resetFilters}
+                  className="px-3 py-1.5 text-sm rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  Clear filters
+                  Reset
                 </button>
-              )}
+                <button
+                  type="button"
+                  onClick={applyFilters}
+                  disabled={!filtersDiffer}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                    filtersDiffer
+                      ? 'bg-orange-500 text-white hover:bg-orange-600'
+                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  Apply
+                </button>
+              </div>
             </div>
           </div>
         )}
