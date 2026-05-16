@@ -177,7 +177,7 @@ function RecipeCard({ recipe, isSaved, onAddToCollection }) {
   );
 }
 
-export default function RecipeLibrary() {
+export default function RecipeLibrary({ onSavedChange } = {}) {
   const navigate = useNavigate();
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -297,7 +297,6 @@ export default function RecipeLibrary() {
       );
 
       if (response.ok) {
-        // Toggle saved state
         setSavedRecipeIds(prev => {
           const newSet = new Set(prev);
           if (isCurrentlySaved) {
@@ -307,6 +306,11 @@ export default function RecipeLibrary() {
           }
           return newSet;
         });
+        // Tell the parent so it can refresh its recipes state and the
+        // Favorites tab reflects the change without a full page reload.
+        if (typeof onSavedChange === 'function') {
+          onSavedChange();
+        }
       }
     } catch (err) {
       console.error('Error toggling recipe save:', err);

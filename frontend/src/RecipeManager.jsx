@@ -1757,45 +1757,69 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
     // Preserve any slot that already has at least one recipe; only fill empty slots.
     let newPlan = mealPlan;
 
-    const pickRandom = (pool) =>
-      pool.length === 0 ? null : pool[Math.floor(Math.random() * pool.length)].id;
-
     const pool = filteredRecipes;
+    // Track which recipe IDs are already used so we don't repeat across the week.
+    // Seed with existing entries so manually-placed dishes count too.
+    const used = new Set();
+    days.forEach((day) => {
+      meals.forEach((meal) => {
+        const raw = newPlan[day]?.[meal];
+        const ids = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+        ids.forEach((id) => used.add(id));
+      });
+    });
 
-    const getRandomRecipeForMeal = (mealType) => {
-      if (randomizerMode === 'full-random') {
-        return pickRandom(pool);
-      }
+    const pickUnused = (candidates) => {
+      const remaining = candidates.filter((r) => !used.has(r.id));
+      const source = remaining.length > 0 ? remaining : candidates;
+      if (source.length === 0) return null;
+      return source[Math.floor(Math.random() * source.length)].id;
+    };
+
+    const matchingForMeal = (mealType) => {
+      if (randomizerMode === 'full-random') return pool;
       const tagMapping = {
         'Breakfast': ['breakfast'],
         'Lunch': ['lunch'],
         'Dinner': ['dinner'],
         'Dessert/Snacking': ['dessert', 'sweet', 'snack'],
       };
-      const matchingKeywords = tagMapping[mealType] || [];
+      const keywords = tagMapping[mealType] || [];
       const matching = pool.filter((r) => {
         if (!r.tags || r.tags.length === 0) return false;
         return r.tags.some((tag) => {
           const tagName = typeof tag === 'string' ? tag.toLowerCase() : tag.name.toLowerCase();
-          return matchingKeywords.some((keyword) => tagName.includes(keyword));
+          return keywords.some((kw) => tagName.includes(kw));
         });
       });
-      return pickRandom(matching) ?? pickRandom(pool);
+      return matching.length > 0 ? matching : pool;
     };
+
+    let filledUnique = 0;
+    let filledTotal = 0;
 
     days.forEach((day) => {
       meals.forEach((meal) => {
-        const existing = Array.isArray(newPlan[day]?.[meal])
-          ? newPlan[day][meal]
-          : newPlan[day]?.[meal] != null ? [newPlan[day][meal]] : [];
+        const raw = newPlan[day]?.[meal];
+        const existing = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
         if (existing.length > 0) return;
-        const id = getRandomRecipeForMeal(meal);
-        if (id != null) newPlan = setSlot(newPlan, day, meal, [id]);
+        const candidates = matchingForMeal(meal);
+        const remainingUnused = candidates.filter((r) => !used.has(r.id));
+        const id = pickUnused(candidates);
+        if (id == null) return;
+        if (remainingUnused.length > 0) filledUnique += 1;
+        filledTotal += 1;
+        used.add(id);
+        newPlan = setSlot(newPlan, day, meal, [id]);
       });
     });
 
     setMealPlan(newPlan);
     onSavePlan(newPlan);
+
+    if (filledTotal > filledUnique && filledTotal > 0) {
+      setDndToast(`Filled ${filledTotal} slots — only ${filledUnique} unique recipes available, some repeats`);
+    }
   };
 
   return (
@@ -2625,7 +2649,7 @@ const RecipeManager = () => {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              <RecipeLibrary />
+              <RecipeLibrary onSavedChange={loadRecipes} />
             </motion.div>
           )}
         </AnimatePresence>
