@@ -484,7 +484,28 @@ const RecipesView = ({
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState('date-newest');
+  const [showTagFilter, setShowTagFilter] = useState(false);
+  const [tagSearch, setTagSearch] = useState('');
   const recipesPerPage = 12;
+
+  // Close popover on click-outside
+  useEffect(() => {
+    if (!showTagFilter) return;
+    const handler = (e) => {
+      if (!e.target.closest('[data-tag-filter-root]')) {
+        setShowTagFilter(false);
+        setTagSearch('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showTagFilter]);
+
+  const visibleTags = useMemo(() => {
+    if (!tagSearch.trim()) return allTags;
+    const q = tagSearch.trim().toLowerCase();
+    return allTags.filter((t) => t.toLowerCase().includes(q));
+  }, [allTags, tagSearch]);
 
   // Sort recipes based on selected option
   const sortedRecipes = [...recipes].sort((a, b) => {
@@ -608,26 +629,112 @@ const RecipesView = ({
         </div>
 
         {allTags.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {allTags.map((tag) => (
-              <button
+          <div className="relative flex flex-wrap items-center gap-2" data-tag-filter-root>
+            <button
+              type="button"
+              onClick={() => setShowTagFilter((v) => !v)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all border ${
+                showTagFilter
+                  ? 'bg-white border-orange-400 text-orange-600 shadow-sm'
+                  : 'bg-white border-transparent text-gray-700 shadow-sm hover:shadow-md'
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span>Filter</span>
+              {selectedTags.length > 0 && (
+                <span className="inline-flex items-center justify-center w-5 h-5 text-xs font-semibold text-white bg-orange-500 rounded-full">
+                  {selectedTags.length}
+                </span>
+              )}
+            </button>
+
+            {selectedTags.map((tag) => (
+              <span
                 key={tag}
-                onClick={() =>
-                  setSelectedTags(
-                    selectedTags.includes(tag)
-                      ? selectedTags.filter((t) => t !== tag)
-                      : [...selectedTags, tag]
-                  )
-                }
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  selectedTags.includes(tag)
-                    ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-md"
-                    : "bg-white text-gray-700 shadow-sm hover:shadow-md"
-                }`}
+                className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full text-sm font-medium bg-orange-100 text-orange-700"
               >
                 {tag}
-              </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedTags(selectedTags.filter((t) => t !== tag))
+                  }
+                  className="text-orange-500 hover:text-orange-700"
+                  aria-label={`Remove ${tag} filter`}
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </span>
             ))}
+
+            {showTagFilter && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute top-full mt-2 left-0 z-30 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
+              >
+                <div className="p-3 border-b border-gray-100">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Search tags..."
+                      value={tagSearch}
+                      onChange={(e) => setTagSearch(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 border-0 rounded-lg focus:ring-2 focus:ring-orange-500"
+                    />
+                  </div>
+                </div>
+                <div className="max-h-72 overflow-y-auto p-3">
+                  {visibleTags.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      No matching tags
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {visibleTags.map((tag) => {
+                        const active = selectedTags.includes(tag);
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() =>
+                              setSelectedTags(
+                                active
+                                  ? selectedTags.filter((t) => t !== tag)
+                                  : [...selectedTags, tag]
+                              )
+                            }
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                              active
+                                ? 'bg-orange-500 text-white border-orange-500'
+                                : 'bg-white text-gray-700 border-gray-200 hover:border-orange-300'
+                            }`}
+                          >
+                            {tag}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                {selectedTags.length > 0 && (
+                  <div className="px-3 py-2 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-xs text-gray-500">
+                      {selectedTags.length} selected
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTags([])}
+                      className="text-xs font-medium text-orange-600 hover:text-orange-700"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
           </div>
         )}
 
