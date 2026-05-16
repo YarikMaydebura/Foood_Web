@@ -765,75 +765,66 @@ const RecipesView = ({
   );
 };
 
-const ShoppingListView = ({ shoppingList, setShoppingList, backendShoppingList, setBackendShoppingList }) => {
-  // Find matching backend item by ingredient name
-  const findBackendItem = (ingredientName) => {
-    if (!backendShoppingList?.items) return null;
-    const normalizedName = ingredientName.toLowerCase();
-    return backendShoppingList.items.find(item =>
-      item.ingredient?.name?.toLowerCase() === normalizedName ||
-      normalizedName.includes(item.ingredient?.name?.toLowerCase()) ||
-      item.ingredient?.name?.toLowerCase().includes(normalizedName)
-    );
-  };
+const formatShoppingQuantity = (qty, unit) => {
+  if (qty == null || qty === 0) return unit || "";
+  const rounded = Math.round(qty * 100) / 100;
+  return `${rounded}${unit ? ` ${unit}` : ""}`;
+};
 
-  const toggleItem = async (index) => {
-    const item = shoppingList[index];
-    if (item.isHeader) return;
+const ShoppingListView = ({ backendShoppingList, setBackendShoppingList, isGenerating }) => {
+  const items = backendShoppingList?.items || [];
+  const totalCount = items.length;
+  const checkedCount = items.filter((it) => it.purchased).length;
+  const progressPercent = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0;
 
-    // Update local state immediately for responsiveness
-    setShoppingList(
-      shoppingList.map((it, i) => (i === index ? { ...it, checked: !it.checked } : it))
-    );
-
-    // Try to sync with backend
-    const backendItem = findBackendItem(item.ingredient);
-    if (backendItem) {
-      const result = await api.toggleShoppingItem(backendItem.id);
-      if (!result.error && backendShoppingList) {
-        // Update backend state
-        setBackendShoppingList({
-          ...backendShoppingList,
-          items: backendShoppingList.items.map(bi =>
-            bi.id === backendItem.id ? { ...bi, purchased: result.purchased } : bi
-          )
-        });
-      }
+  const toggleItem = async (itemId) => {
+    if (!backendShoppingList) return;
+    // Optimistic update.
+    setBackendShoppingList({
+      ...backendShoppingList,
+      items: backendShoppingList.items.map((it) =>
+        it.id === itemId ? { ...it, purchased: !it.purchased } : it
+      ),
+    });
+    const result = await api.toggleShoppingItem(itemId);
+    if (result.error) {
+      // Roll back.
+      setBackendShoppingList({
+        ...backendShoppingList,
+        items: backendShoppingList.items.map((it) =>
+          it.id === itemId ? { ...it, purchased: !it.purchased } : it
+        ),
+      });
     }
   };
 
-  // Merge backend purchased status into local shopping list when backend data loads
-  useEffect(() => {
-    if (backendShoppingList?.items && shoppingList.length > 0) {
-      setShoppingList(prevList =>
-        prevList.map(item => {
-          if (item.isHeader) return item;
-          const backendItem = findBackendItem(item.ingredient);
-          if (backendItem) {
-            return { ...item, checked: backendItem.purchased };
-          }
-          return item;
-        })
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [backendShoppingList]);
-
-  const uncheckedCount = shoppingList.filter((item) => !item.isHeader && !item.checked).length;
-  const totalCount = shoppingList.filter((item) => !item.isHeader).length;
-  const progressPercent = totalCount > 0 ? ((totalCount - uncheckedCount) / totalCount) * 100 : 0;
+  const setAll = async (purchased) => {
+    if (!backendShoppingList) return;
+    const targets = items.filter((it) => it.purchased !== purchased);
+    if (targets.length === 0) return;
+    setBackendShoppingList({
+      ...backendShoppingList,
+      items: items.map((it) => ({ ...it, purchased })),
+    });
+    await Promise.all(targets.map((it) => api.toggleShoppingItem(it.id)));
+  };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Shopping List</h2>
-          <p className="text-gray-500 text-sm mt-1">Items from your meal plan</p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
+            Shopping List
+            {isGenerating && (
+              <span className="w-5 h-5 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin" />
+            )}
+          </h2>
+          <p className="text-gray-500 text-sm mt-1">Auto-generated from your meal plan</p>
         </div>
         {totalCount > 0 && (
           <div className="text-right">
             <div className="text-sm font-medium text-gray-700">
-              {totalCount - uncheckedCount} of {totalCount} items
+              {checkedCount} of {totalCount} items
             </div>
             <div className="w-32 h-2 bg-gray-200 rounded-full mt-1 overflow-hidden">
               <div
@@ -846,7 +837,7 @@ const ShoppingListView = ({ shoppingList, setShoppingList, backendShoppingList, 
       </div>
 
       <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
-        {shoppingList.length === 0 ? (
+        {totalCount === 0 ? (
           <div className="text-center py-12">
             <div className="w-20 h-20 bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <ShoppingCart className="w-10 h-10 text-orange-400" />
@@ -857,57 +848,38 @@ const ShoppingListView = ({ shoppingList, setShoppingList, backendShoppingList, 
         ) : (
           <>
             <div className="space-y-1">
-              {shoppingList.map((item, index) => (
-                item.isHeader ? (
-                  <div
-                    key={index}
-                    className="flex items-center gap-3 pt-6 pb-2 mt-4 first:mt-0 first:pt-0"
-                  >
-                    <div className="flex-1 flex items-center gap-3">
-                      <h3 className="text-sm font-bold text-orange-600 uppercase tracking-wider">
-                        {item.item}
-                      </h3>
-                      <div className="flex-1 h-px bg-gradient-to-r from-orange-200 to-transparent" />
-                    </div>
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className={`flex items-center gap-3 p-3 rounded-xl transition-all cursor-pointer ${
+                    item.purchased ? 'bg-gray-50' : 'hover:bg-orange-50'
+                  }`}
+                  onClick={() => toggleItem(item.id)}
+                >
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
+                    item.purchased
+                      ? 'bg-gradient-to-r from-green-400 to-emerald-500 border-transparent'
+                      : 'border-gray-300 hover:border-orange-400'
+                  }`}>
+                    {item.purchased && (
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
                   </div>
-                ) : (
-                  <div
-                    key={index}
-                    className={`flex items-center gap-3 p-3 rounded-xl transition-all cursor-pointer ${
-                      item.checked ? 'bg-gray-50' : 'hover:bg-orange-50'
+                  <span
+                    className={`flex-1 transition-all ${
+                      item.purchased ? "line-through text-gray-400" : "text-gray-800"
                     }`}
-                    onClick={() => toggleItem(index)}
                   >
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-                      item.checked
-                        ? 'bg-gradient-to-r from-green-400 to-emerald-500 border-transparent'
-                        : 'border-gray-300 hover:border-orange-400'
-                    }`}>
-                      {item.checked && (
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </div>
-                    <span
-                      className={`flex-1 transition-all ${
-                        item.checked ? "line-through text-gray-400" : "text-gray-800"
-                      }`}
-                    >
-                      {item.displayQuantity && (
-                        <span className="text-gray-500 font-normal">
-                          {item.displayQuantity}{' '}
-                        </span>
-                      )}
-                      <span className="font-medium">{item.ingredient}</span>
-                      {item.hint && (
-                        <span className={`ml-2 text-sm ${item.checked ? "text-gray-400" : "text-orange-500"}`}>
-                          ({item.hint})
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                )
+                    {item.total_quantity ? (
+                      <span className="text-gray-500 font-normal">
+                        {formatShoppingQuantity(item.total_quantity, item.unit)}{' '}
+                      </span>
+                    ) : null}
+                    <span className="font-medium">{item.ingredient?.name}</span>
+                  </span>
+                </div>
               ))}
             </div>
 
@@ -915,26 +887,16 @@ const ShoppingListView = ({ shoppingList, setShoppingList, backendShoppingList, 
               <div className="mt-6 pt-6 border-t border-gray-100">
                 <div className="flex flex-col sm:flex-row gap-3">
                   <button
-                    onClick={() =>
-                      setShoppingList(shoppingList.map((item) => ({ ...item, checked: true })))
-                    }
+                    onClick={() => setAll(true)}
                     className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition text-gray-700 font-medium shadow-sm"
                   >
                     Check All
                   </button>
                   <button
-                    onClick={() =>
-                      setShoppingList(shoppingList.map((item) => ({ ...item, checked: false })))
-                    }
+                    onClick={() => setAll(false)}
                     className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition text-gray-700 font-medium shadow-sm"
                   >
                     Uncheck All
-                  </button>
-                  <button
-                    onClick={() => setShoppingList(shoppingList.filter((item) => !item.checked))}
-                    className="flex-1 px-4 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl hover:bg-red-100 transition font-medium"
-                  >
-                    Clear Checked
                   </button>
                 </div>
               </div>
@@ -2167,8 +2129,8 @@ const RecipeManager = () => {
 
   const [recipes, setRecipes] = useState([]);
   const [mealPlan, setMealPlan] = useState({});
-  const [shoppingList, setShoppingList] = useState([]);
   const [backendShoppingList, setBackendShoppingList] = useState(null);
+  const [isGeneratingShoppingList, setIsGeneratingShoppingList] = useState(false);
 
   const [currentView, setCurrentView] = useState(localStorage.getItem('currentView') || "recipes");
   const [loading, setLoading] = useState(false);
@@ -2225,26 +2187,28 @@ const RecipeManager = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // Debounced backend regeneration whenever the meal plan changes.
+  // The server joins recipes -> recipe_ingredients itself, so we don't need
+  // the recipes array to have ingredients on the client.
   useEffect(() => {
-    const syncShoppingList = async () => {
-      // Generate local shopping list for display (with categories, hints, etc.)
-      generateShoppingList();
-
-      // Sync with backend for persistence
-      if (user && Object.keys(mealPlan).length > 0) {
+    if (!user) return;
+    if (Object.keys(mealPlan).length === 0) {
+      setBackendShoppingList(null);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      setIsGeneratingShoppingList(true);
+      try {
         const weekStart = getWeekStartDate();
-
-        // Generate shopping list on backend
-        const generateResult = await api.generateShoppingList(weekStart);
-        if (!generateResult.error) {
-          setBackendShoppingList(generateResult);
-        }
+        const result = await api.generateShoppingList(weekStart);
+        if (!result.error) setBackendShoppingList(result);
+      } finally {
+        setIsGeneratingShoppingList(false);
       }
-    };
-
-    syncShoppingList();
+    }, 500);
+    return () => clearTimeout(handle);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mealPlan, recipes]);
+  }, [mealPlan, user]);
 
   // Handle recipe import from shared link
   useEffect(() => {
@@ -2369,401 +2333,6 @@ const RecipeManager = () => {
     if (!result.error) setMealPlan(result.plan || result);
   };
 
-  const generateShoppingList = () => {
-    const ingredientsMap = {};
-
-    // Average weights for common countable ingredients (grams per piece)
-    const ingredientWeights = {
-      'egg': 50,
-      'tomato': 150,
-      'onion': 110,
-      'garlic': 5,      // per clove
-      'banana': 120,
-      'apple': 180,
-      'potato': 150,
-      'carrot': 60,
-      'lemon': 60,
-      'lime': 45,
-      'orange': 130,
-      'avocado': 150,
-      'chicken breast': 175,
-      'bell pepper': 150,
-      'pepper': 150,
-      'cucumber': 300,
-      'zucchini': 200,
-      'mushroom': 20,
-      'strawberry': 12,
-      'cherry tomato': 15,
-      'shallot': 30,
-      'clove': 5,
-    };
-
-    // Unit type classification
-    const unitTypes = {
-      // Countable
-      'piece': 'count', 'pcs': 'count', 'pc': 'count', '': 'count',
-      'clove': 'count', 'slice': 'count', 'head': 'count', 'packet': 'count',
-      // Weight
-      'g': 'weight', 'gram': 'weight', 'kg': 'weight',
-      'oz': 'weight', 'lb': 'weight', 'pound': 'weight',
-      // Volume
-      'ml': 'volume', 'l': 'volume', 'liter': 'volume',
-      'cup': 'volume', 'tbsp': 'volume', 'tsp': 'volume',
-      'fl oz': 'volume',
-    };
-
-    // Helper: convert to grams
-    const toGrams = (quantity, unit) => {
-      const conversions = { 'g': 1, 'kg': 1000, 'oz': 28.35, 'lb': 453.6 };
-      return quantity * (conversions[unit] || 0);
-    };
-
-    // Helper: convert to ml
-    const toMl = (quantity, unit) => {
-      const conversions = {
-        'ml': 1, 'l': 1000, 'cup': 240,
-        'tbsp': 15, 'tsp': 5, 'fl oz': 30
-      };
-      return quantity * (conversions[unit] || 0);
-    };
-
-    // Helper: format weight for display
-    const formatWeight = (grams) => {
-      if (grams >= 1000) return `${(grams / 1000).toFixed(1)}kg`;
-      return `${Math.round(grams)}g`;
-    };
-
-    // Helper: format volume for display
-    const formatVolume = (ml) => {
-      if (ml >= 1000) return `${(ml / 1000).toFixed(1)}L`;
-      return `${Math.round(ml)}ml`;
-    };
-
-    Object.values(mealPlan).forEach((dayPlan) => {
-      Object.values(dayPlan).forEach((slotValue) => {
-        const ids = Array.isArray(slotValue) ? slotValue : slotValue != null ? [slotValue] : [];
-        ids.forEach((recipeId) => {
-        const recipe = recipes.find((r) => r.id === recipeId);
-        if (recipe?.recipe_ingredients) {
-          recipe.recipe_ingredients.forEach((ri) => {
-            const fullText = (ri.ingredient?.name || ri.ingredient_name).trim();
-
-            // Skip "to taste" items
-            if (fullText.toLowerCase().match(/^(to\s+taste|salt\s+and\s+pepper\s+to\s+taste)$/i)) {
-              return;
-            }
-
-            // Parse "quantity unit ingredient" format
-            // Improved regex to handle numbers with fractions, decimals, and various units
-            const match = fullText.match(/^([\d.\/]+)?\s*(cups?|tbsps?|tablespoons?|tsps?|teaspoons?|g|kg|oz|lbs?|ml|cloves?|slices?|packets?|heads?)?\s*(.+)$/i);
-
-            if (match) {
-              let [, qtyStr, unit, ingredient] = match;
-
-              // Parse quantity
-              let quantity = 1;
-              if (qtyStr) {
-                qtyStr = qtyStr.trim();
-                if (qtyStr.includes('/')) {
-                  const parts = qtyStr.split('/');
-                  quantity = parseFloat(parts[0]) / parseFloat(parts[1]);
-                } else {
-                  quantity = parseFloat(qtyStr);
-                }
-              }
-
-              // Normalize unit
-              let normalizedUnit = '';
-              if (unit) {
-                unit = unit.toLowerCase().trim();
-                if (unit.match(/^cups?$/i)) normalizedUnit = 'cup';
-                else if (unit.match(/^(tablespoons?|tbsps?)$/i)) normalizedUnit = 'tbsp';
-                else if (unit.match(/^(teaspoons?|tsps?)$/i)) normalizedUnit = 'tsp';
-                else if (unit.match(/^cloves?$/i)) normalizedUnit = 'clove';
-                else if (unit.match(/^slices?$/i)) normalizedUnit = 'slice';
-                else if (unit.match(/^packets?$/i)) normalizedUnit = 'packet';
-                else if (unit.match(/^heads?$/i)) normalizedUnit = 'head';
-                else if (unit.match(/^lbs?$/i)) normalizedUnit = 'lb';
-                else normalizedUnit = unit;
-              }
-
-              // Clean ingredient name and normalize spaces
-              ingredient = ingredient.trim()
-                .replace(/^(fresh|dried|ground|chopped|sliced|diced|minced|crushed)\s+/i, '')
-                .replace(/\s+to\s+taste$/i, '')
-                .replace(/\s*\([^)]*\)/g, '')
-                .replace(/\s+/g, ' ') // Normalize multiple spaces to single space
-                .trim();
-
-              // Normalize to singular form for combining
-              let singularIngredient = ingredient.toLowerCase();
-
-              // Singularize ingredient name for combining similar items
-              if (singularIngredient.endsWith('olives')) {
-                singularIngredient = singularIngredient.slice(0, -1); // olives -> olive
-              } else if (singularIngredient.endsWith('ves')) {
-                singularIngredient = singularIngredient.slice(0, -3) + 'f'; // leaves -> leaf
-              } else if (singularIngredient.endsWith('ies')) {
-                singularIngredient = singularIngredient.slice(0, -3) + 'y'; // berries -> berry
-              } else if (singularIngredient.endsWith('oes')) {
-                singularIngredient = singularIngredient.slice(0, -2); // tomatoes -> tomato
-              } else if (singularIngredient.endsWith('sses')) {
-                // Keep as is (grasses -> grasses)
-              } else if (singularIngredient.endsWith('s') && !singularIngredient.endsWith('ss')) {
-                singularIngredient = singularIngredient.slice(0, -1); // eggs -> egg
-              }
-
-              // Create unique key for combining - GROUP BY INGREDIENT NAME ONLY (not unit)
-              const key = singularIngredient;
-
-              if (!ingredientsMap[key]) {
-                ingredientsMap[key] = { ingredient: singularIngredient, entries: [] };
-              }
-              ingredientsMap[key].entries.push({ quantity, unit: normalizedUnit });
-            } else if (fullText.trim()) {
-              // Fallback for unparseable items
-              const lower = fullText.toLowerCase();
-              if (!ingredientsMap[lower]) {
-                ingredientsMap[lower] = { ingredient: lower, entries: [] };
-              }
-              ingredientsMap[lower].entries.push({ quantity: 1, unit: '' });
-            }
-          });
-        }
-        });
-      });
-    });
-
-    // Helper: combine entries and generate smart display
-    const combineEntries = (ingredient, entries) => {
-      // Separate by unit type
-      const countEntries = entries.filter(e => !e.unit || unitTypes[e.unit] === 'count');
-      const weightEntries = entries.filter(e => unitTypes[e.unit] === 'weight');
-      const volumeEntries = entries.filter(e => unitTypes[e.unit] === 'volume');
-
-      // Sum within same unit type
-      const countTotal = countEntries.reduce((sum, e) => sum + (e.quantity || 1), 0);
-      const weightTotal = weightEntries.reduce((sum, e) => sum + toGrams(e.quantity, e.unit), 0);
-      const volumeTotal = volumeEntries.reduce((sum, e) => sum + toMl(e.quantity, e.unit), 0);
-
-      // Generate hint based on ingredient weight data
-      let hint = null;
-      const avgWeight = ingredientWeights[ingredient.toLowerCase()];
-
-      if (countTotal > 0 && weightTotal > 0 && avgWeight) {
-        // Both count and weight exist - provide conversion hint
-        const estimatedFromWeight = Math.ceil(weightTotal / avgWeight);
-        const totalEstimate = Math.round(countTotal) + estimatedFromWeight;
-        hint = `≈${totalEstimate} total`;
-      } else if (weightTotal > 0 && avgWeight && countTotal === 0) {
-        // Only weight - convert to pieces
-        const estimated = Math.ceil(weightTotal / avgWeight);
-        hint = `≈${estimated} pcs`;
-      }
-
-      return {
-        ingredient,
-        countTotal: Math.round(countTotal * 100) / 100,
-        weightTotal,
-        volumeTotal,
-        hint
-      };
-    };
-
-    // Process all ingredients through combineEntries
-    const processedIngredients = {};
-    Object.entries(ingredientsMap).forEach(([key, data]) => {
-      processedIngredients[key] = combineEntries(data.ingredient, data.entries);
-    });
-
-    // Comprehensive ingredient categorization
-    const categories = {
-      'Produce': [
-        // Vegetables
-        'tomato', 'onion', 'garlic', 'lettuce', 'cucumber', 'carrot', 'celery', 'bell pepper', 'pepper',
-        'potato', 'sweet potato', 'broccoli', 'cauliflower', 'cabbage', 'spinach', 'kale', 'arugula',
-        'zucchini', 'squash', 'eggplant', 'mushroom', 'corn', 'pea', 'bean', 'asparagus', 'avocado',
-        'radish', 'beet', 'turnip', 'leek', 'shallot', 'scallion', 'spring onion', 'green onion',
-        'cherry tomato', 'roma tomato', 'red onion', 'white onion', 'yellow onion', 'romaine lettuce',
-        'iceberg lettuce', 'mixed green', 'mixed vegetable', 'kalamata olive', 'olive', 'jalapeño',
-        'chili', 'habanero', 'serrano', 'poblano', 'green bean', 'snap pea', 'edamame',
-        // Fruits
-        'banana', 'apple', 'orange', 'lemon', 'lime', 'strawberry', 'blueberry', 'raspberry',
-        'blackberry', 'grape', 'watermelon', 'melon', 'cantaloupe', 'pineapple', 'mango', 'papaya',
-        'peach', 'plum', 'pear', 'cherry', 'kiwi', 'coconut', 'pomegranate', 'fig', 'date',
-        // Herbs
-        'cilantro', 'parsley', 'basil', 'mint', 'oregano', 'thyme', 'rosemary', 'sage', 'dill',
-        'chive', 'tarragon', 'bay leaf', 'coriander leaf', 'ginger', 'lemongrass', 'bay'
-      ],
-      'Proteins': [
-        // Poultry
-        'chicken', 'chicken breast', 'chicken thigh', 'chicken wing', 'chicken leg', 'turkey',
-        'duck', 'quail',
-        // Meat
-        'beef', 'pork', 'lamb', 'veal', 'bacon', 'sausage', 'ham', 'ground beef', 'ground pork',
-        'steak', 'ribeye', 'sirloin', 'brisket', 'short rib', 'pork chop', 'pork belly',
-        // Seafood
-        'fish', 'salmon', 'tuna', 'cod', 'tilapia', 'halibut', 'trout', 'sardine', 'anchovy',
-        'anchovy fillet', 'shrimp', 'prawn', 'lobster', 'crab', 'scallop', 'mussel', 'clam', 'oyster',
-        'squid', 'octopus', 'calamari',
-        // Eggs & Plant-Based
-        'egg', 'tofu', 'tempeh', 'seitan', 'edamame'
-      ],
-      'Dairy': [
-        'milk', 'whole milk', 'skim milk', '2% milk', 'almond milk', 'soy milk', 'oat milk',
-        'coconut milk', 'heavy cream', 'whipping cream', 'half and half', 'cream',
-        'butter', 'unsalted butter', 'salted butter', 'ghee', 'margarine', 'melted butter',
-        'cheese', 'cheddar cheese', 'mozzarella', 'parmesan cheese', 'feta cheese', 'goat cheese',
-        'cream cheese', 'ricotta', 'cottage cheese', 'swiss cheese', 'provolone', 'brie',
-        'blue cheese', 'gorgonzola', 'gouda', 'monterey jack', 'pepper jack', 'shredded cheese',
-        'yogurt', 'greek yogurt', 'sour cream', 'crème fraîche', 'mascarpone'
-      ],
-      'Pantry Staples': [
-        // Grains & Flour
-        'flour', 'all-purpose flour', 'bread flour', 'cake flour', 'whole wheat flour', 'almond flour',
-        'coconut flour', 'cornmeal', 'cornstarch', 'rice', 'white rice', 'brown rice', 'basmati rice',
-        'jasmine rice', 'wild rice', 'arborio rice', 'quinoa', 'couscous', 'bulgur', 'farro', 'barley',
-        'oat', 'rolled oat', 'steel cut oat', 'oatmeal',
-        // Pasta & Noodles
-        'pasta', 'spaghetti', 'penne', 'rigatoni', 'macaroni', 'linguine', 'fettuccine', 'lasagna',
-        'angel hair', 'ravioli', 'tortellini', 'noodle', 'ramen', 'udon', 'soba', 'rice noodle',
-        'vermicelli',
-        // Beans & Legumes
-        'black bean', 'kidney bean', 'pinto bean', 'chickpea', 'garbanzo bean', 'lentil',
-        'split pea', 'navy bean', 'cannellini bean', 'lima bean',
-        // Sugar & Sweeteners
-        'sugar', 'granulated sugar', 'white sugar', 'brown sugar', 'powdered sugar', 'confectioner sugar',
-        'honey', 'maple syrup', 'agave', 'molasses', 'corn syrup',
-        // Baking
-        'baking powder', 'baking soda', 'yeast', 'active dry yeast', 'instant yeast', 'vanilla extract',
-        'almond extract', 'cocoa powder', 'chocolate chip', 'chocolate', 'dark chocolate',
-        'milk chocolate', 'white chocolate', 'baking chocolate',
-        // Nuts & Seeds
-        'almond', 'walnut', 'pecan', 'cashew', 'peanut', 'pistachio', 'hazelnut', 'macadamia',
-        'pine nut', 'sesame seed', 'sunflower seed', 'pumpkin seed', 'chia seed', 'flax seed',
-        'poppy seed', 'peanut butter', 'almond butter', 'tahini',
-        // Canned Goods
-        'tomato sauce', 'tomato paste', 'crushed tomato', 'diced tomato', 'tomato puree',
-        'chicken broth', 'beef broth', 'vegetable broth', 'stock', 'coconut cream'
-      ],
-      'Oils & Vinegars': [
-        'oil', 'olive oil', 'extra virgin olive oil', 'vegetable oil', 'canola oil', 'coconut oil',
-        'sesame oil', 'peanut oil', 'avocado oil', 'grapeseed oil', 'sunflower oil', 'corn oil',
-        'vinegar', 'white vinegar', 'apple cider vinegar', 'balsamic vinegar', 'red wine vinegar',
-        'white wine vinegar', 'rice vinegar', 'sherry vinegar'
-      ],
-      'Condiments & Sauces': [
-        'ketchup', 'mustard', 'mayonnaise', 'mayo', 'relish', 'pickle', 'hot sauce', 'tabasco',
-        'sriracha', 'salsa', 'guacamole', 'hummus', 'pesto', 'marinara', 'alfredo',
-        'soy sauce', 'tamari', 'teriyaki sauce', 'worcestershire sauce', 'fish sauce', 'oyster sauce',
-        'hoisin sauce', 'bbq sauce', 'ranch', 'caesar dressing', 'italian dressing', 'vinaigrette',
-        'blue cheese dressing', 'thousand island', 'honey mustard', 'tahini sauce'
-      ],
-      'Spices & Seasonings': [
-        'salt', 'sea salt', 'kosher salt', 'pepper', 'black pepper', 'white pepper', 'cayenne',
-        'paprika', 'cumin', 'coriander', 'turmeric', 'curry powder', 'garam masala', 'chili powder',
-        'red pepper flake', 'crushed red pepper', 'garlic powder', 'onion powder', 'ginger powder',
-        'cinnamon', 'nutmeg', 'clove', 'allspice', 'cardamom', 'star anise', 'fennel seed',
-        'mustard seed', 'celery seed', 'caraway seed', 'italian seasoning', 'herbs de provence',
-        'taco seasoning', 'fajita seasoning', 'cajun seasoning', 'old bay', 'everything bagel seasoning'
-      ],
-      'Bread & Bakery': [
-        'bread', 'white bread', 'wheat bread', 'whole grain bread', 'sourdough', 'baguette',
-        'ciabatta', 'pita', 'naan', 'tortilla', 'flour tortilla', 'corn tortilla', 'taco shell',
-        'tortilla chip', 'bagel', 'english muffin', 'croissant', 'roll', 'dinner roll', 'bun',
-        'hamburger bun', 'hot dog bun', 'slider bun', 'crouton', 'breadcrumb', 'panko'
-      ],
-      'Frozen Foods': [
-        'ice cream', 'frozen yogurt', 'sorbet', 'ice', 'ice cube', 'frozen vegetable',
-        'frozen fruit', 'frozen berry', 'frozen pea', 'frozen corn', 'frozen pizza', 'frozen waffle'
-      ],
-      'Beverages': [
-        'water', 'sparkling water', 'soda', 'juice', 'orange juice', 'apple juice', 'cranberry juice',
-        'coffee', 'tea', 'green tea', 'black tea', 'herbal tea', 'wine', 'red wine', 'white wine',
-        'beer', 'sake', 'rum', 'vodka', 'whiskey', 'bourbon', 'gin', 'tequila', 'brandy'
-      ],
-      'Other': []
-    };
-
-    const categorizedList = {};
-    Object.keys(categories).forEach(cat => categorizedList[cat] = []);
-
-    // Format and categorize items using processedIngredients
-    Object.entries(processedIngredients).forEach(([key, data]) => {
-      const ing = data.ingredient;
-
-      // Pluralize ingredient if needed based on count
-      let displayIng = ing;
-      const massNouns = ['flour', 'sugar', 'rice', 'milk', 'butter', 'oil', 'salt', 'pepper', 'water', 'cheese', 'honey', 'yogurt', 'bread', 'ice'];
-      const isMassNoun = massNouns.some(noun => ing.includes(noun));
-
-      if (data.countTotal > 1 && !isMassNoun && data.weightTotal === 0 && data.volumeTotal === 0) {
-        if (ing.endsWith('f')) {
-          displayIng = ing.slice(0, -1) + 'ves'; // leaf -> leaves
-        } else if (ing.endsWith('y') && !ing.endsWith('ay') && !ing.endsWith('ey')) {
-          displayIng = ing.slice(0, -1) + 'ies'; // berry -> berries
-        } else if (ing.endsWith('o')) {
-          displayIng = ing + 'es'; // tomato -> tomatoes
-        } else if (!ing.endsWith('s')) {
-          displayIng = ing + 's';
-        }
-      }
-
-      // Capitalize ingredient name
-      displayIng = displayIng.charAt(0).toUpperCase() + displayIng.slice(1);
-
-      // Find category
-      let foundCategory = 'Other';
-      for (const [cat, items] of Object.entries(categories)) {
-        if (items.some(item => ing.includes(item) || item.includes(ing))) {
-          foundCategory = cat;
-          break;
-        }
-      }
-
-      // Build display string for quantity
-      let displayParts = [];
-      if (data.countTotal > 0) {
-        displayParts.push(`${data.countTotal}${data.countTotal === 1 ? '' : ''}`);
-      }
-      if (data.weightTotal > 0) {
-        displayParts.push(formatWeight(data.weightTotal));
-      }
-      if (data.volumeTotal > 0) {
-        displayParts.push(formatVolume(data.volumeTotal));
-      }
-
-      categorizedList[foundCategory].push({
-        countTotal: data.countTotal,
-        weightTotal: data.weightTotal,
-        volumeTotal: data.volumeTotal,
-        displayQuantity: displayParts.join(' + '),
-        hint: data.hint,
-        ingredient: displayIng,
-        count: 1,
-        checked: false,
-      });
-    });
-
-    // Build final list with category headers
-    const finalList = [];
-    Object.keys(categories).forEach(category => {
-      if (categorizedList[category].length > 0) {
-        // Add category header
-        finalList.push({
-          item: category,
-          count: 1,
-          checked: false,
-          isHeader: true,
-        });
-        // Sort and add items
-        categorizedList[category].sort((a, b) => a.ingredient.localeCompare(b.ingredient));
-        finalList.push(...categorizedList[category]);
-      }
-    });
-
-    setShoppingList(finalList);
-  };
 
   const handleAddRecipe = () => {
     setEditingRecipe(null);
@@ -3076,10 +2645,9 @@ const RecipeManager = () => {
 
         {currentView === "shopping" && (
           <ShoppingListView
-            shoppingList={shoppingList}
-            setShoppingList={setShoppingList}
             backendShoppingList={backendShoppingList}
             setBackendShoppingList={setBackendShoppingList}
+            isGenerating={isGeneratingShoppingList}
           />
         )}
       </main>
