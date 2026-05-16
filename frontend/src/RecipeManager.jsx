@@ -913,8 +913,81 @@ const formatShoppingQuantity = (qty, unit) => {
   return `${rounded}${displayUnit ? ` ${displayUnit}` : ""}`;
 };
 
+// Day-of-week index where 0 = Monday, 6 = Sunday (matching backend storage).
+const todayDayOfWeek = () => {
+  const d = new Date().getDay(); // JS: 0 = Sun, 1 = Mon, ..., 6 = Sat
+  return d === 0 ? 6 : d - 1;
+};
+
+const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const RANGE_PRESETS = [
+  { id: "today", label: "Today" },
+  { id: "tomorrow", label: "Tomorrow" },
+  { id: "next3", label: "Next 3 days" },
+  { id: "week", label: "This week" },
+];
+
+const daysForRange = (rangeId, baseDay = todayDayOfWeek()) => {
+  if (rangeId === "week") return [0, 1, 2, 3, 4, 5, 6];
+  if (rangeId === "today") return [baseDay];
+  if (rangeId === "tomorrow") return [(baseDay + 1) % 7];
+  if (rangeId === "next3") return [baseDay, (baseDay + 1) % 7, (baseDay + 2) % 7];
+  return [0, 1, 2, 3, 4, 5, 6];
+};
+
+// Reduce items to only those that have any quantity within the selected day set.
+// Returns items with `total_quantity` recomputed to just the days in the set.
+const sliceItemsByDays = (items, daySet) => {
+  const set = new Set(daySet.map((d) => String(d)));
+  return items
+    .map((item) => {
+      if (!item.day_quantities) {
+        // Persisted items without breakdown — treat as week-only.
+        return null;
+      }
+      let qty = 0;
+      for (const [dayStr, value] of Object.entries(item.day_quantities)) {
+        if (set.has(dayStr)) qty += value;
+      }
+      if (qty <= 0) return null;
+      return { ...item, total_quantity: qty };
+    })
+    .filter(Boolean);
+};
+
 const ShoppingListView = ({ backendShoppingList, setBackendShoppingList, isGenerating }) => {
-  const items = backendShoppingList?.items || [];
+  const allItems = backendShoppingList?.items || [];
+  const [selectedRange, setSelectedRange] = useState("next3");
+  const [autoExpandedFrom, setAutoExpandedFrom] = useState(null);
+
+  // Compute the items + days actually displayed. If the selected range is
+  // empty and there's a later non-empty day, walk forward and show that day.
+  const { items, displayDays, autoExpandedTo } = useMemo(() => {
+    const requestedDays = daysForRange(selectedRange);
+    let filtered = sliceItemsByDays(allItems, requestedDays);
+    if (filtered.length > 0 || selectedRange === "week") {
+      return { items: filtered, displayDays: requestedDays, autoExpandedTo: null };
+    }
+    // Walk forward day-by-day looking for the next non-empty day in the
+    // remainder of the week relative to the user's "today".
+    const base = todayDayOfWeek();
+    const offsetMax = selectedRange === "today" ? 6 : 6;
+    for (let offset = 1; offset <= offsetMax; offset++) {
+      const day = (base + offset) % 7;
+      const dayItems = sliceItemsByDays(allItems, [day]);
+      if (dayItems.length > 0) {
+        return { items: dayItems, displayDays: [day], autoExpandedTo: day };
+      }
+    }
+    return { items: [], displayDays: requestedDays, autoExpandedTo: null };
+  }, [allItems, selectedRange]);
+
+  // Reset the auto-expand banner when the user explicitly picks a range.
+  useEffect(() => {
+    setAutoExpandedFrom(autoExpandedTo ? selectedRange : null);
+  }, [autoExpandedTo, selectedRange]);
+
   const totalCount = items.length;
   const checkedCount = items.filter((it) => it.purchased).length;
   const progressPercent = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0;
@@ -964,7 +1037,7 @@ const ShoppingListView = ({ backendShoppingList, setBackendShoppingList, isGener
           <p className="text-gray-500 text-sm mt-1">Auto-generated from your meal plan</p>
         </div>
         {totalCount > 0 && (
-          <div className="text-right">
+          <div className="text-right hidden sm:block">
             <div className="text-sm font-medium text-gray-700">
               {checkedCount} of {totalCount} items
             </div>
@@ -978,14 +1051,50 @@ const ShoppingListView = ({ backendShoppingList, setBackendShoppingList, isGener
         )}
       </div>
 
+      {/* Range selector */}
+      <div className="flex flex-wrap gap-1.5 bg-white rounded-2xl shadow-sm border border-gray-100 p-1.5 mb-4">
+        {RANGE_PRESETS.map((preset) => {
+          const active = selectedRange === preset.id;
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              onClick={() => setSelectedRange(preset.id)}
+              className={`flex-1 min-w-[5rem] px-3 py-2 text-sm font-medium rounded-xl transition-colors ${
+                active
+                  ? 'bg-orange-500 text-white shadow-sm'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {autoExpandedFrom && autoExpandedTo != null && (
+        <div className="mb-4 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
+          {selectedRange === 'today' && 'Today’s plan is empty — '}
+          {selectedRange === 'tomorrow' && 'Tomorrow’s plan is empty — '}
+          {selectedRange === 'next3' && 'No meals in the next 3 days — '}
+          showing the next day with meals (<span className="font-semibold">{DAY_LABELS[autoExpandedTo]}</span>).
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
         {totalCount === 0 ? (
           <div className="text-center py-12">
             <div className="w-20 h-20 bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <ShoppingCart className="w-10 h-10 text-orange-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">No items in your list</h3>
-            <p className="text-gray-500">Add recipes to your meal planner to generate a shopping list</p>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              {allItems.length === 0 ? 'No items in your list' : 'Nothing in this range'}
+            </h3>
+            <p className="text-gray-500">
+              {allItems.length === 0
+                ? 'Add recipes to your meal planner to generate a shopping list'
+                : 'Try switching to a longer range or plan meals for these days first.'}
+            </p>
           </div>
         ) : (
           <>

@@ -47,13 +47,18 @@ def create_shopping_list(db: Session, user_id: int, week_start_date: date) -> Sh
     return shopping_list
 
 
-def generate_shopping_list_from_meal_plan(db: Session, user_id: int, week_start_date: date) -> ShoppingList:
-    """Generate shopping list by aggregating ingredients from meal plan"""
-    # Get or create shopping list for this week
+def generate_shopping_list_from_meal_plan(
+    db: Session, user_id: int, week_start_date: date
+) -> ShoppingList:
+    """Generate shopping list by aggregating ingredients from meal plan.
+
+    Each returned item has a transient `day_quantities` attribute (dict
+    mapping day_of_week as a string to the contributed quantity) so the
+    frontend can filter the list by day range without an extra DB round trip.
+    """
     shopping_list = get_shopping_list_by_week(db, user_id, week_start_date)
 
     if shopping_list:
-        # Clear existing items
         for item in shopping_list.items:
             db.delete(item)
         db.flush()
@@ -62,48 +67,57 @@ def generate_shopping_list_from_meal_plan(db: Session, user_id: int, week_start_
         db.add(shopping_list)
         db.flush()
 
-    # Get all meal plan entries for the week
     meal_entries = db.scalars(
         select(MealPlanEntry)
         .where(
             MealPlanEntry.user_id == user_id,
-            MealPlanEntry.week_start_date == week_start_date
+            MealPlanEntry.week_start_date == week_start_date,
         )
     ).all()
 
-    # Aggregate ingredients from all recipes
+    # Aggregate ingredients across the whole week + per-day breakdown.
     ingredient_totals: dict[int, dict] = {}
+    day_quantities: dict[int, dict[int, float]] = {}
 
     for entry in meal_entries:
-        # Get recipe ingredients
         recipe_ingredients = db.scalars(
             select(RecipeIngredient)
             .where(RecipeIngredient.recipe_id == entry.recipe_id)
         ).all()
 
         for ri in recipe_ingredients:
+            qty = float(ri.quantity) if ri.quantity else 0.0
             if ri.ingredient_id not in ingredient_totals:
                 ingredient_totals[ri.ingredient_id] = {
-                    "total_quantity": 0,
+                    "total_quantity": 0.0,
                     "unit": ri.unit,
                 }
+                day_quantities[ri.ingredient_id] = {}
+            ingredient_totals[ri.ingredient_id]["total_quantity"] += qty
+            day_quantities[ri.ingredient_id][entry.day_of_week] = (
+                day_quantities[ri.ingredient_id].get(entry.day_of_week, 0.0) + qty
+            )
 
-            if ri.quantity:
-                ingredient_totals[ri.ingredient_id]["total_quantity"] += float(ri.quantity)
-
-    # Create shopping list items
     for ingredient_id, data in ingredient_totals.items():
         item = ShoppingListItem(
             shopping_list_id=shopping_list.id,
             ingredient_id=ingredient_id,
             total_quantity=data["total_quantity"] if data["total_quantity"] > 0 else None,
             unit=data["unit"],
-            purchased=False
+            purchased=False,
         )
         db.add(item)
 
     db.commit()
     db.refresh(shopping_list)
+
+    # Attach the per-day breakdown as a transient attribute on each item so
+    # Pydantic (with from_attributes=True) can serialize it without us
+    # persisting a JSON column. Keys are stringified for JSON friendliness.
+    for item in shopping_list.items:
+        breakdown = day_quantities.get(item.ingredient_id, {})
+        item.day_quantities = {str(k): v for k, v in breakdown.items()}
+
     return shopping_list
 
 

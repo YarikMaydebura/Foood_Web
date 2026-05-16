@@ -24,6 +24,11 @@ class ShoppingListItemOut(BaseModel):
     total_quantity: float | None
     unit: str | None
     purchased: bool
+    # Per-day breakdown of the quantity that contributed to this item.
+    # Keys are day_of_week as strings ("0".."6"); values are the qty added
+    # by entries on that day. Only present on freshly generated lists; reads
+    # of persisted lists won't include it.
+    day_quantities: dict[str, float] | None = None
 
     class Config:
         from_attributes = True
