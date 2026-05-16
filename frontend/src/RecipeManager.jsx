@@ -113,6 +113,22 @@ const api = {
     }
   },
 
+  deleteAccount: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        method: "DELETE",
+        headers: getAuthHeaders(),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        return { error: data.detail || "Failed to delete account" };
+      }
+      return { success: true };
+    } catch (err) {
+      return { error: "Network error" };
+    }
+  },
+
   getRecipes: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/recipes`, {
@@ -872,10 +888,29 @@ const RecipesView = ({
   );
 };
 
+// Lightweight metric -> imperial conversion table for the units shown on the
+// shopping list. We only convert common cases; anything we don't know about
+// passes through unchanged.
+const METRIC_TO_IMPERIAL = {
+  g: { factor: 0.03527396, unit: "oz" },
+  kg: { factor: 2.20462262, unit: "lb" },
+  ml: { factor: 0.03381402, unit: "fl oz" },
+  l: { factor: 4.22675284, unit: "cups" },
+};
+
 const formatShoppingQuantity = (qty, unit) => {
   if (qty == null || qty === 0) return unit || "";
-  const rounded = Math.round(qty * 100) / 100;
-  return `${rounded}${unit ? ` ${unit}` : ""}`;
+  const units = localStorage.getItem("measurementUnits") || "metric";
+  const normalizedUnit = (unit || "").trim().toLowerCase();
+  let displayQty = qty;
+  let displayUnit = unit || "";
+  if (units === "imperial" && METRIC_TO_IMPERIAL[normalizedUnit]) {
+    const conv = METRIC_TO_IMPERIAL[normalizedUnit];
+    displayQty = qty * conv.factor;
+    displayUnit = conv.unit;
+  }
+  const rounded = Math.round(displayQty * 100) / 100;
+  return `${rounded}${displayUnit ? ` ${displayUnit}` : ""}`;
 };
 
 const ShoppingListView = ({ backendShoppingList, setBackendShoppingList, isGenerating }) => {
@@ -1015,7 +1050,7 @@ const ShoppingListView = ({ backendShoppingList, setBackendShoppingList, isGener
   );
 };
 
-const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => {
+const SettingsModal = ({ user, recipes = [], onClose, randomizerMode, setRandomizerMode }) => {
   const [name, setName] = useState(user?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -1025,16 +1060,60 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
   const [success, setSuccess] = useState("");
   const [tempRandomizerMode, setTempRandomizerMode] = useState(randomizerMode);
 
+  const [defaultDietTags, setDefaultDietTags] = useState(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("defaultDietTags") || "[]");
+      return Array.isArray(stored) ? stored : [];
+    } catch {
+      return [];
+    }
+  });
+  const [measurementUnits, setMeasurementUnits] = useState(
+    () => localStorage.getItem("measurementUnits") || "metric"
+  );
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteEmail, setDeleteEmail] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const ownedRecipesCount = recipes.filter((r) => r.source !== "library").length;
+  const favoritesCount = recipes.filter((r) => r.isSavedFromLibrary === true).length;
+  const memberSince = user?.created_at
+    ? new Date(user.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
+    : "—";
+
+  const toggleDietTag = (tag) => {
+    setDefaultDietTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
   const handleCancel = () => {
-    // Don't save any changes, just close
     onClose();
   };
 
   const handleSaveAndClose = () => {
-    // Apply the temporary randomizer mode
     setRandomizerMode(tempRandomizerMode);
     localStorage.setItem('randomizerMode', tempRandomizerMode);
+    localStorage.setItem('defaultDietTags', JSON.stringify(defaultDietTags));
+    localStorage.setItem('measurementUnits', measurementUnits);
     onClose();
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteEmail.trim().toLowerCase() !== (user?.email || "").toLowerCase()) {
+      setError("Email doesn't match — type it exactly to confirm.");
+      return;
+    }
+    setIsDeleting(true);
+    setError("");
+    const result = await api.deleteAccount();
+    setIsDeleting(false);
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    localStorage.clear();
+    window.location.href = "/auth/login";
   };
 
   const handleSaveProfile = async () => {
@@ -1184,6 +1263,62 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
             </div>
           </div>
 
+          {/* Dietary Preferences */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Dietary preferences</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              These pre-fill the planner's filter every time you open it. Change them anytime in the planner.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {DIET_TAG_OPTIONS.map((tag) => {
+                const active = defaultDietTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleDietTag(tag)}
+                    className={`px-3 py-1.5 text-sm rounded-full border transition-colors ${
+                      active
+                        ? 'bg-emerald-500 text-white border-emerald-500'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-emerald-300'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Measurement units */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Measurement units</h3>
+            <p className="text-sm text-gray-500 mb-4">Switch how quantities show in your shopping list.</p>
+            <div className="flex gap-3">
+              {[
+                { value: 'metric', label: 'Metric', sub: 'g, ml, kg' },
+                { value: 'imperial', label: 'Imperial', sub: 'oz, cups, lbs' },
+              ].map((opt) => {
+                const active = measurementUnits === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setMeasurementUnits(opt.value)}
+                    className={`flex-1 p-4 rounded-xl text-left transition-all border-2 ${
+                      active
+                        ? 'bg-orange-50 border-orange-400'
+                        : 'bg-white border-gray-200 hover:border-orange-300'
+                    }`}
+                  >
+                    <div className="font-semibold text-gray-900">{opt.label}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">{opt.sub}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Meal Planner Settings */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Meal Planner Randomizer</h3>
@@ -1224,6 +1359,77 @@ const SettingsModal = ({ user, onClose, randomizerMode, setRandomizerMode }) => 
                 </div>
               </label>
             </div>
+          </div>
+
+          {/* Account stats */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Account</h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-gray-50 rounded-xl p-3 text-center">
+                <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Recipes</div>
+                <div className="text-2xl font-bold text-gray-900">{ownedRecipesCount}</div>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3 text-center">
+                <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Favorites</div>
+                <div className="text-2xl font-bold text-gray-900">{favoritesCount}</div>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-3 text-center">
+                <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">Member since</div>
+                <div className="text-sm font-semibold text-gray-900 mt-1.5">{memberSince}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Danger zone */}
+          <div className="border-2 border-red-200 rounded-xl p-4 sm:p-5 bg-red-50/30">
+            <h3 className="text-lg font-semibold text-red-700 mb-2">Danger zone</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Deleting your account permanently removes your recipes, meal plan, favorites,
+              and shopping list. This can't be undone.
+            </p>
+            {!showDeleteConfirm ? (
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(true)}
+                className="px-4 py-2 bg-white border border-red-300 text-red-600 rounded-xl hover:bg-red-100 transition font-medium"
+              >
+                Delete account
+              </button>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-700">
+                  Type your email <span className="font-mono font-semibold">{user?.email}</span> to confirm.
+                </p>
+                <input
+                  type="email"
+                  value={deleteEmail}
+                  onChange={(e) => setDeleteEmail(e.target.value)}
+                  placeholder="Type your email"
+                  className="w-full px-4 py-2.5 bg-white border border-red-200 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                />
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDeleteConfirm(false);
+                      setDeleteEmail("");
+                      setError("");
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    disabled={isDeleting}
+                    className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-60 transition font-semibold"
+                  >
+                    {isDeleting ? "Deleting..." : "Delete forever"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
@@ -1713,8 +1919,19 @@ const MealPlannerView = ({ recipes, mealPlan, setMealPlan, onSavePlan, randomize
     maxCarbs: "",
     maxTotalTime: "",
   };
-  const [pendingFilters, setPendingFilters] = useState(EMPTY_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState(EMPTY_FILTERS);
+  const initialFilters = (() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem("defaultDietTags") || "[]");
+      if (Array.isArray(stored) && stored.length > 0) {
+        return { ...EMPTY_FILTERS, selectedDietTags: stored };
+      }
+    } catch {
+      /* fall through */
+    }
+    return EMPTY_FILTERS;
+  })();
+  const [pendingFilters, setPendingFilters] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
 
   const setPendingField = (key, value) =>
     setPendingFilters((prev) => ({ ...prev, [key]: value }));
@@ -2844,6 +3061,7 @@ const RecipeManager = () => {
       {showSettings && (
         <SettingsModal
           user={user}
+          recipes={recipes}
           onClose={() => setShowSettings(false)}
           randomizerMode={randomizerMode}
           setRandomizerMode={setRandomizerMode}

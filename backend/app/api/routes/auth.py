@@ -184,9 +184,26 @@ def get_me(current_user: User = Depends(get_current_user)):
             "name": getattr(current_user, "name", None),
             "email": current_user.email,
             "email_verified": current_user.email_verified,
-            "onboarding_completed": current_user.onboarding_completed
+            "onboarding_completed": current_user.onboarding_completed,
+            "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
         }
     }
+
+
+@router.delete("/me", status_code=204)
+def delete_my_account(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Permanently delete the authenticated user and all their owned data.
+
+    Cascades to recipes, tags, meal_plan_entries, shopping_lists,
+    verification_codes, preferences, and saved_recipes via the
+    User model's relationship config.
+    """
+    db.delete(current_user)
+    db.commit()
+    return None
 
 
 @router.post("/refresh")
