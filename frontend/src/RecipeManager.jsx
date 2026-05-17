@@ -961,6 +961,26 @@ const ShoppingListView = ({ backendShoppingList, setBackendShoppingList, isGener
   const [selectedRange, setSelectedRange] = useState("next3");
   const [autoExpandedFrom, setAutoExpandedFrom] = useState(null);
 
+  // Count of items each preset would produce (for the badges on each button).
+  // Computed against the full list so the user can see at a glance which
+  // ranges have meals planned.
+  const presetCounts = useMemo(() => {
+    const counts = {};
+    for (const preset of RANGE_PRESETS) {
+      counts[preset.id] = sliceItemsByDays(allItems, daysForRange(preset.id)).length;
+    }
+    return counts;
+  }, [allItems]);
+
+  // Per-day item counts (Mon..Sun) so the user can tap any day directly.
+  const perDayCounts = useMemo(() => {
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    for (let d = 0; d < 7; d++) {
+      counts[d] = sliceItemsByDays(allItems, [d]).length;
+    }
+    return counts;
+  }, [allItems]);
+
   // Compute the items + days actually displayed. If the selected range is
   // empty and there's a later non-empty day, walk forward and show that day.
   const { items, displayDays, autoExpandedTo } = useMemo(() => {
@@ -972,8 +992,7 @@ const ShoppingListView = ({ backendShoppingList, setBackendShoppingList, isGener
     // Walk forward day-by-day looking for the next non-empty day in the
     // remainder of the week relative to the user's "today".
     const base = todayDayOfWeek();
-    const offsetMax = selectedRange === "today" ? 6 : 6;
-    for (let offset = 1; offset <= offsetMax; offset++) {
+    for (let offset = 1; offset <= 6; offset++) {
       const day = (base + offset) % 7;
       const dayItems = sliceItemsByDays(allItems, [day]);
       if (dayItems.length > 0) {
@@ -982,6 +1001,16 @@ const ShoppingListView = ({ backendShoppingList, setBackendShoppingList, isGener
     }
     return { items: [], displayDays: requestedDays, autoExpandedTo: null };
   }, [allItems, selectedRange]);
+
+  // What date does the device think it is? Show it so users can verify
+  // there's no clock/timezone mismatch (a common phone-on-WiFi issue).
+  const todayLabel = useMemo(() => {
+    return new Date().toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+    });
+  }, []);
 
   // Reset the auto-expand banner when the user explicitly picks a range.
   useEffect(() => {
@@ -1051,25 +1080,87 @@ const ShoppingListView = ({ backendShoppingList, setBackendShoppingList, isGener
         )}
       </div>
 
-      {/* Range selector */}
-      <div className="flex flex-wrap gap-1.5 bg-white rounded-2xl shadow-sm border border-gray-100 p-1.5 mb-4">
-        {RANGE_PRESETS.map((preset) => {
-          const active = selectedRange === preset.id;
-          return (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => setSelectedRange(preset.id)}
-              className={`flex-1 min-w-[5rem] px-3 py-2 text-sm font-medium rounded-xl transition-colors ${
-                active
-                  ? 'bg-orange-500 text-white shadow-sm'
-                  : 'text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {preset.label}
-            </button>
-          );
-        })}
+      {/* Today indicator — so the user can spot a clock/timezone mismatch */}
+      <div className="text-xs text-gray-500 mb-2 px-1">
+        <span>Today is </span>
+        <span className="font-semibold text-gray-700">{todayLabel}</span>
+        <span className="text-gray-400"> · ranges use your device clock</span>
+      </div>
+
+      {/* Range selector with item counts */}
+      <div className="sticky top-0 z-10 bg-orange-50/95 backdrop-blur-sm -mx-1 px-1 pt-1 pb-2 mb-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-white rounded-2xl shadow-sm border border-gray-100 p-1.5">
+          {RANGE_PRESETS.map((preset) => {
+            const active = selectedRange === preset.id;
+            const count = presetCounts[preset.id] || 0;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => setSelectedRange(preset.id)}
+                className={`flex flex-col items-center justify-center px-2 py-2.5 rounded-xl transition-colors min-h-[3.25rem] ${
+                  active
+                    ? 'bg-orange-500 text-white shadow-sm'
+                    : count > 0
+                      ? 'text-gray-800 hover:bg-gray-50'
+                      : 'text-gray-400 hover:bg-gray-50'
+                }`}
+              >
+                <span className="text-sm font-medium">{preset.label}</span>
+                <span className={`text-[10px] mt-0.5 ${active ? 'text-white/80' : count > 0 ? 'text-orange-500' : 'text-gray-300'}`}>
+                  {count} {count === 1 ? "item" : "items"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Quick-jump per day so users can tap any specific day */}
+        <div className="flex gap-1 mt-2">
+          {DAY_LABELS.map((label, idx) => {
+            const count = perDayCounts[idx];
+            const isToday = idx === todayDayOfWeek();
+            const isShowing = displayDays.length === 1 && displayDays[0] === idx;
+            return (
+              <button
+                key={label}
+                type="button"
+                onClick={() => {
+                  // Tap a day: synthetic range = just that day. We model it
+                  // by switching to 'today' if it really is today, else
+                  // by adjusting selectedRange... but the cleanest UX is to
+                  // pick the preset that covers exactly this day. We just
+                  // show it via the displayDays single-day mode by setting
+                  // a transient selection.
+                  if (isToday) setSelectedRange("today");
+                  else if (idx === (todayDayOfWeek() + 1) % 7) setSelectedRange("tomorrow");
+                  else {
+                    // Otherwise jump to week view + scroll user attention via
+                    // the small note. (Granular per-arbitrary-day jumping
+                    // would need a custom 'specific day' range — out of
+                    // scope for this round.)
+                    setSelectedRange("week");
+                  }
+                }}
+                className={`flex-1 flex flex-col items-center py-1.5 rounded-lg text-xs transition-colors ${
+                  isShowing
+                    ? 'bg-orange-100 text-orange-700 font-semibold'
+                    : count > 0
+                      ? 'text-gray-700 hover:bg-white'
+                      : 'text-gray-300'
+                } ${isToday ? 'ring-1 ring-orange-300' : ''}`}
+                title={count === 0 ? `${label}: no meals planned` : `${label}: ${count} items`}
+              >
+                <span>{label}</span>
+                {count > 0 && (
+                  <span className={`text-[9px] mt-0.5 ${isShowing ? 'text-orange-600' : 'text-gray-400'}`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {autoExpandedFrom && autoExpandedTo != null && (
@@ -1081,7 +1172,7 @@ const ShoppingListView = ({ backendShoppingList, setBackendShoppingList, isGener
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
+      <div className="bg-white rounded-2xl shadow-lg p-3 sm:p-6 pb-24 sm:pb-6">
         {totalCount === 0 ? (
           <div className="text-center py-12">
             <div className="w-20 h-20 bg-gradient-to-br from-orange-100 to-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -1093,64 +1184,92 @@ const ShoppingListView = ({ backendShoppingList, setBackendShoppingList, isGener
             <p className="text-gray-500">
               {allItems.length === 0
                 ? 'Add recipes to your meal planner to generate a shopping list'
-                : 'Try switching to a longer range or plan meals for these days first.'}
+                : 'Tap another range above or open the Meal Plan to add meals for these days.'}
             </p>
           </div>
         ) : (
           <>
             <div className="space-y-1">
               {items.map((item) => (
-                <div
+                <button
                   key={item.id}
-                  className={`flex items-center gap-3 p-3 rounded-xl transition-all cursor-pointer ${
-                    item.purchased ? 'bg-gray-50' : 'hover:bg-orange-50'
+                  type="button"
+                  className={`w-full flex items-center gap-4 px-3 py-3.5 sm:py-3 rounded-xl transition-all text-left ${
+                    item.purchased ? 'bg-gray-50' : 'hover:bg-orange-50 active:bg-orange-100'
                   }`}
                   onClick={() => toggleItem(item.id)}
                 >
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
+                  <div className={`w-7 h-7 sm:w-6 sm:h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
                     item.purchased
                       ? 'bg-gradient-to-r from-green-400 to-emerald-500 border-transparent'
-                      : 'border-gray-300 hover:border-orange-400'
+                      : 'border-gray-300'
                   }`}>
                     {item.purchased && (
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </div>
                   <span
-                    className={`flex-1 transition-all ${
+                    className={`flex-1 transition-all leading-tight ${
                       item.purchased ? "line-through text-gray-400" : "text-gray-800"
                     }`}
                   >
                     {item.total_quantity ? (
-                      <span className="text-gray-500 font-normal">
+                      <span className="text-gray-500 font-normal text-sm">
                         {formatShoppingQuantity(item.total_quantity, item.unit)}{' '}
                       </span>
                     ) : null}
-                    <span className="font-medium">{item.ingredient?.name}</span>
+                    <span className="font-medium text-base">{item.ingredient?.name}</span>
                   </span>
-                </div>
+                </button>
               ))}
             </div>
 
             {totalCount > 0 && (
-              <div className="mt-6 pt-6 border-t border-gray-100">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={() => setAll(true)}
-                    className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition text-gray-700 font-medium shadow-sm"
-                  >
-                    Check All
-                  </button>
-                  <button
-                    onClick={() => setAll(false)}
-                    className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition text-gray-700 font-medium shadow-sm"
-                  >
-                    Uncheck All
-                  </button>
+              <>
+                {/* Desktop / tablet bulk actions */}
+                <div className="mt-6 pt-6 border-t border-gray-100 hidden sm:block">
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setAll(true)}
+                      className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition text-gray-700 font-medium shadow-sm"
+                    >
+                      Check All
+                    </button>
+                    <button
+                      onClick={() => setAll(false)}
+                      className="flex-1 px-4 py-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition text-gray-700 font-medium shadow-sm"
+                    >
+                      Uncheck All
+                    </button>
+                  </div>
                 </div>
-              </div>
+
+                {/* Mobile: fixed bottom action bar so it's always reachable
+                    while shopping. Padding-bottom for iOS safe area. */}
+                <div className="sm:hidden fixed bottom-0 inset-x-0 z-20 bg-white border-t border-gray-200 shadow-2xl p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 text-xs text-gray-600">
+                      <div className="font-semibold text-gray-800">
+                        {checkedCount} / {totalCount} done
+                      </div>
+                      <div className="h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all"
+                          style={{ width: `${progressPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setAll(checkedCount < totalCount)}
+                      className="px-4 py-2.5 bg-orange-500 text-white rounded-xl font-medium text-sm active:bg-orange-600 shadow-sm"
+                    >
+                      {checkedCount < totalCount ? "Check all" : "Uncheck all"}
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
           </>
         )}
