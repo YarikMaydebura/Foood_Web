@@ -1701,6 +1701,9 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
   const [prepTime, setPrepTime] = useState(recipe?.prep_time_minutes ?? "");
   const [cookTime, setCookTime] = useState(recipe?.cook_time_minutes ?? "");
   const [servings, setServings] = useState(recipe?.servings ?? 4);
+  // Default new recipes to public so the community can discover them.
+  // Editing existing private recipes preserves their setting.
+  const [isPublic, setIsPublic] = useState(recipe ? !!recipe.is_public : true);
   const [calories, setCalories] = useState(recipe?.calories ?? "");
   const [protein, setProtein] = useState(recipe?.protein_g ?? "");
   const [carbs, setCarbs] = useState(recipe?.carbs_g ?? "");
@@ -1842,6 +1845,7 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
       sugar_g: toFloatOrNull(sugar),
       sodium_mg: toFloatOrNull(sodium),
       cholesterol_mg: toFloatOrNull(cholesterol),
+      is_public: isPublic,
       tags: tags
         .split(",")
         .map((t) => capitalizeTag(t.trim()))
@@ -2005,6 +2009,37 @@ const RecipeFormModal = ({ recipe, onClose, onSave }) => {
                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all"
                   />
                 </div>
+              </div>
+            </section>
+
+            {/* Visibility */}
+            <section className="bg-gray-50/60 rounded-xl p-4 sm:p-5">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">Visibility</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPublic(true)}
+                  className={`flex flex-col items-start gap-1 text-left p-4 rounded-xl border-2 transition-all ${
+                    isPublic
+                      ? 'bg-emerald-50 border-emerald-400'
+                      : 'bg-white border-gray-200 hover:border-emerald-300'
+                  }`}
+                >
+                  <span className="font-semibold text-gray-900">Public</span>
+                  <span className="text-xs text-gray-600">Anyone can find this recipe in Browse.</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPublic(false)}
+                  className={`flex flex-col items-start gap-1 text-left p-4 rounded-xl border-2 transition-all ${
+                    !isPublic
+                      ? 'bg-gray-100 border-gray-400'
+                      : 'bg-white border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="font-semibold text-gray-900">Private</span>
+                  <span className="text-xs text-gray-600">Only you see it. Stays in My Recipes.</span>
+                </button>
               </div>
             </section>
 

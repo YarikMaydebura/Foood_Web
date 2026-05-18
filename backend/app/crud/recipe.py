@@ -54,6 +54,15 @@ def get_recipe_by_user(db: Session, recipe_id: int, user_id: int) -> Recipe | No
     )
 
 
+_OPTIONAL_RECIPE_FIELDS = (
+    "calories", "protein_g", "carbs_g", "fat_g", "fiber_g", "sugar_g",
+    "sodium_mg", "cholesterol_mg", "servings",
+    "prep_time_minutes", "cook_time_minutes",
+    "difficulty", "cuisine", "category",
+    "is_public",
+)
+
+
 def create_recipe(
     db: Session,
     user_id: int,
@@ -63,14 +72,17 @@ def create_recipe(
     image_url: str | None = None,
     ingredients: list[dict] | None = None,
     tag_ids: list[int] | None = None,
+    **extra_fields,
 ) -> Recipe:
     # Create recipe
+    kwargs = {k: v for k, v in extra_fields.items() if k in _OPTIONAL_RECIPE_FIELDS and v is not None}
     recipe = Recipe(
         user_id=user_id,
         title=title,
         instructions=instructions,
         description=description,
         image_url=image_url,
+        **kwargs,
     )
     db.add(recipe)
     db.flush()  # Get recipe ID
@@ -115,6 +127,7 @@ def update_recipe(
     image_url: str | None = None,
     ingredients: list[dict] | None = None,
     tag_ids: list[int] | None = None,
+    **extra_fields,
 ) -> Recipe:
     # Update basic fields
     if title is not None:
@@ -125,6 +138,9 @@ def update_recipe(
         recipe.description = description
     if image_url is not None:
         recipe.image_url = image_url
+    for key in _OPTIONAL_RECIPE_FIELDS:
+        if key in extra_fields and extra_fields[key] is not None:
+            setattr(recipe, key, extra_fields[key])
 
     # Update ingredients (replace all)
     if ingredients is not None:

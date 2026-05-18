@@ -55,6 +55,9 @@ def create_recipe(
                 for tag_name in body.tags if tag_name.strip()]
         tag_ids = [tag.id for tag in tags]
 
+    extras = body.model_dump(
+        exclude={"title", "instructions", "description", "image_url", "ingredients", "tag_ids", "tags"}
+    )
     return crud_recipe.create_recipe(
         db,
         user_id=current_user.id,
@@ -64,6 +67,7 @@ def create_recipe(
         image_url=body.image_url,
         ingredients=[ing.model_dump() for ing in body.ingredients],
         tag_ids=tag_ids,
+        **extras,
     )
 
 
@@ -90,6 +94,10 @@ def update_recipe(
                 for tag_name in body.tags if tag_name.strip()]
         tag_ids = [tag.id for tag in tags]
 
+    extras = body.model_dump(
+        exclude={"title", "instructions", "description", "image_url", "ingredients", "tag_ids", "tags"},
+        exclude_none=True,
+    )
     return crud_recipe.update_recipe(
         db,
         recipe,
@@ -99,6 +107,7 @@ def update_recipe(
         image_url=body.image_url,
         ingredients=ingredients,
         tag_ids=tag_ids,
+        **extras,
     )
 
 

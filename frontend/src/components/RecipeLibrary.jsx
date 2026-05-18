@@ -96,6 +96,13 @@ function RecipeCard({ recipe, isSaved, onAddToCollection }) {
           </span>
         )}
 
+        {/* Community badge — appears on user-submitted public recipes */}
+        {recipe.source === 'community' && (
+          <span className="absolute top-3 left-3 mt-7 px-2 py-1 bg-indigo-500 text-white text-xs font-medium rounded-full">
+            Community
+          </span>
+        )}
+
         {/* Add to Collection Button */}
         <AnimatePresence>
           {(isHovered || isSaved) && (
@@ -153,6 +160,12 @@ function RecipeCard({ recipe, isSaved, onAddToCollection }) {
             {recipe.title}
           </h3>
         </div>
+
+        {recipe.author_name && recipe.source === 'community' && (
+          <p className="text-xs text-indigo-600 font-medium mb-1.5">
+            by {recipe.author_name}
+          </p>
+        )}
 
         {recipe.description && (
           <p className="text-sm text-gray-500 line-clamp-2 mb-3">

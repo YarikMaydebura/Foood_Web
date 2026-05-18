@@ -29,6 +29,8 @@ class RecipeCreate(BaseModel):
     difficulty: str | None = None
     cuisine: str | None = None
     category: str | None = "meal"
+    # Sharing — default public so other users can find new recipes in Browse.
+    is_public: bool = True
 
 
 class RecipeUpdate(BaseModel):
@@ -55,6 +57,7 @@ class RecipeUpdate(BaseModel):
     difficulty: str | None = None
     cuisine: str | None = None
     category: str | None = None
+    is_public: bool | None = None
 
 
 class RecipeOut(BaseModel):

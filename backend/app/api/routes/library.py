@@ -84,8 +84,12 @@ def list_library_recipes(
     # Apply pagination and ordering
     query = query.order_by(Recipe.title).offset(offset).limit(limit)
     recipes = db.scalars(
-        query.options(joinedload(Recipe.tags))
+        query.options(joinedload(Recipe.tags), joinedload(Recipe.user))
     ).unique().all()
+
+    # ID of the seeded library user — recipes owned by them are flagged as
+    # 'library', anything else with is_public=True is 'community'.
+    LIBRARY_USER_ID = 3
 
     # Get user's saved recipe IDs if authenticated
     saved_recipe_ids = set()
@@ -97,9 +101,11 @@ def list_library_recipes(
         ).all()
         saved_recipe_ids = set(saved)
 
-    # Add is_saved flag + nutrition + tags to recipes
+    # Add is_saved flag + nutrition + tags + author info to recipes
     items = []
     for recipe in recipes:
+        is_library = recipe.user_id == LIBRARY_USER_ID
+        author = getattr(recipe, "user", None)
         recipe_dict = {
             "id": recipe.id,
             "title": recipe.title,
@@ -117,7 +123,10 @@ def list_library_recipes(
             "carbs_g": recipe.carbs_g,
             "fat_g": recipe.fat_g,
             "tags": [t.name for t in recipe.tags],
-            "is_saved": recipe.id in saved_recipe_ids
+            "is_saved": recipe.id in saved_recipe_ids,
+            "source": "library" if is_library else "community",
+            "author_id": recipe.user_id,
+            "author_name": author.name if author and not is_library else None,
         }
         items.append(recipe_dict)
 
