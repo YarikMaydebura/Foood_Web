@@ -19,21 +19,21 @@ import { useEffect, useRef } from 'react';
 const AD_CONFIG = {
   // Replace these with your actual Adsterra ad configuration
   // You'll get these values from your Adsterra dashboard
-  enabled: false, // Set to true when you have your ad codes
+  enabled: true, // Set to true when you have your ad codes
   '728x90': {
-    key: 'YOUR_ADSTERRA_KEY_728x90',
+    key: '2a8450bf5949e60def527debb7900f15_728x90',
     format: 'iframe',
     height: 90,
     width: 728,
   },
   '300x250': {
-    key: 'YOUR_ADSTERRA_KEY_300x250',
+    key: '2a8450bf5949e60def527debb7900f15_300x250',
     format: 'iframe',
     height: 250,
     width: 300,
   },
   '320x50': {
-    key: 'YOUR_ADSTERRA_KEY_320x50',
+    key: '2a8450bf5949e60def527debb7900f15_320x50',
     format: 'iframe',
     height: 50,
     width: 320,

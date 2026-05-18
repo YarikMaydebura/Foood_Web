@@ -167,6 +167,14 @@ function RecipeCard({ recipe, isSaved, onAddToCollection }) {
           </p>
         )}
 
+        {recipe.rating_count > 0 && (
+          <p className="flex items-center gap-1 text-xs text-gray-600 mb-1.5">
+            <span className="text-amber-500">★</span>
+            <span className="font-semibold">{recipe.rating_average?.toFixed(1)}</span>
+            <span className="text-gray-400">({recipe.rating_count})</span>
+          </p>
+        )}
+
         {recipe.description && (
           <p className="text-sm text-gray-500 line-clamp-2 mb-3">
             {recipe.description}

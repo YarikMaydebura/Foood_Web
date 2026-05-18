@@ -296,11 +296,105 @@ export default function RecipeDetailPage() {
   const [savePending, setSavePending] = useState(false);
   const [toast, setToast] = useState(null);
 
+  // Reviews
+  const [reviews, setReviews] = useState([]);
+  const [reviewSummary, setReviewSummary] = useState({ average: null, count: 0 });
+  const [myReview, setMyReview] = useState(null);
+  const [draftRating, setDraftRating] = useState(0);
+  const [draftComment, setDraftComment] = useState("");
+  const [savingReview, setSavingReview] = useState(false);
+
+  const loadReviews = async (recipeId) => {
+    try {
+      const [listRes, summaryRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/recipes/${recipeId}/reviews`),
+        fetch(`${API_BASE_URL}/recipes/${recipeId}/reviews/summary`),
+      ]);
+      if (listRes.ok) setReviews(await listRes.json());
+      if (summaryRes.ok) setReviewSummary(await summaryRes.json());
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const loadMyReview = async (recipeId) => {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/recipes/${recipeId}/reviews/me`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMyReview(data || null);
+        if (data) {
+          setDraftRating(data.rating);
+          setDraftComment(data.comment || "");
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const submitReview = async () => {
+    if (!recipe || draftRating < 1) return;
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      navigate('/auth/login');
+      return;
+    }
+    setSavingReview(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/recipes/${recipe.id}/reviews`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ rating: draftRating, comment: draftComment.trim() || null }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMyReview(data);
+        setToast(myReview ? 'Review updated' : 'Review posted');
+        await loadReviews(recipe.id);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToast(data.detail || 'Failed to post review');
+      }
+    } finally {
+      setSavingReview(false);
+    }
+  };
+
+  const deleteMyReview = async () => {
+    if (!recipe) return;
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+    const res = await fetch(`${API_BASE_URL}/recipes/${recipe.id}/reviews/me`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (res.ok) {
+      setMyReview(null);
+      setDraftRating(0);
+      setDraftComment("");
+      setToast('Review removed');
+      await loadReviews(recipe.id);
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     setIsAuthenticated(!!token);
     fetchRecipe();
   }, [slug]);
+
+  // Load reviews whenever the recipe loads.
+  useEffect(() => {
+    if (!recipe?.id) return;
+    loadReviews(recipe.id);
+    loadMyReview(recipe.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipe?.id, isAuthenticated]);
 
   // Once we know the recipe id + auth, check if this recipe is already saved.
   useEffect(() => {
@@ -719,6 +813,114 @@ export default function RecipeDetailPage() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Reviews */}
+        <div className="mt-8 bg-white rounded-2xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h2 className="text-xl font-bold text-gray-900">Reviews</h2>
+            {reviewSummary.count > 0 ? (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-amber-500 text-lg">★</span>
+                <span className="font-semibold text-gray-900">
+                  {reviewSummary.average?.toFixed(1)}
+                </span>
+                <span className="text-gray-500">
+                  ({reviewSummary.count} {reviewSummary.count === 1 ? 'review' : 'reviews'})
+                </span>
+              </div>
+            ) : (
+              <span className="text-sm text-gray-500">No reviews yet</span>
+            )}
+          </div>
+
+          {/* Write / edit your review */}
+          {isAuthenticated && (
+            <div className="bg-orange-50/60 border border-orange-100 rounded-xl p-4 mb-6">
+              <p className="text-sm font-medium text-gray-700 mb-2">
+                {myReview ? 'Your review' : 'Leave a review'}
+              </p>
+              <div className="flex items-center gap-1 mb-3">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setDraftRating(n)}
+                    aria-label={`Rate ${n} star${n > 1 ? 's' : ''}`}
+                    className={`text-2xl transition-colors ${
+                      draftRating >= n ? 'text-amber-500' : 'text-gray-300 hover:text-amber-400'
+                    }`}
+                  >
+                    ★
+                  </button>
+                ))}
+                {draftRating > 0 && (
+                  <span className="ml-2 text-sm text-gray-600">{draftRating}/5</span>
+                )}
+              </div>
+              <textarea
+                value={draftComment}
+                onChange={(e) => setDraftComment(e.target.value.slice(0, 500))}
+                rows={2}
+                placeholder="Optional — share what worked or didn't (up to 500 chars)"
+                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+              />
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs text-gray-400">{draftComment.length}/500</span>
+                <div className="flex items-center gap-2">
+                  {myReview && (
+                    <button
+                      type="button"
+                      onClick={deleteMyReview}
+                      className="px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      Delete review
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={submitReview}
+                    disabled={draftRating < 1 || savingReview}
+                    className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                      draftRating < 1 || savingReview
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-orange-500 text-white hover:bg-orange-600'
+                    }`}
+                  >
+                    {myReview ? 'Update' : 'Post review'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* List of reviews */}
+          {reviews.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-6">
+              Be the first to review this recipe.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {reviews.map((r) => (
+                <div key={r.id} className="border-b border-gray-100 pb-4 last:border-b-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900">{r.author_name || 'User'}</span>
+                      <span className="text-amber-500">
+                        {'★'.repeat(r.rating)}<span className="text-gray-300">{'★'.repeat(5 - r.rating)}</span>
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-400">
+                      {new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                  {r.comment && (
+                    <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{r.comment}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Login Prompt for non-authenticated users */}

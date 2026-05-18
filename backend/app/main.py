@@ -48,6 +48,7 @@ from app.api.routes.tags import router as tags_router
 from app.api.routes.shopping_lists import router as shopping_lists_router
 from app.api.routes.onboarding import router as onboarding_router
 from app.api.routes.library import router as library_router
+from app.api.routes.reviews import router as reviews_router
 
 app = FastAPI(title="Recipe Manager API", version="2.0.0")
 
@@ -79,6 +80,7 @@ app.include_router(tags_router)
 app.include_router(shopping_lists_router)
 app.include_router(onboarding_router)
 app.include_router(library_router)
+app.include_router(reviews_router)
 
 
 @app.api_route("/health", methods=["GET", "HEAD"])

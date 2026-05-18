@@ -10,6 +10,7 @@ from app.models.ingredient import Ingredient
 from app.models.recipe_ingredient import RecipeIngredient
 from app.models.tag import Tag
 from app.models.user_saved_recipe import UserSavedRecipe
+from app.models.recipe_review import RecipeReview
 from app.schemas.recipe import RecipeOut, LibraryRecipeOut
 from app.crud.tag import get_or_create_tag
 
@@ -101,6 +102,25 @@ def list_library_recipes(
         ).all()
         saved_recipe_ids = set(saved)
 
+    # Batch-load rating summaries for the page of recipes we just fetched.
+    recipe_ids = [r.id for r in recipes]
+    rating_by_recipe: dict[int, dict] = {}
+    if recipe_ids:
+        rows = db.execute(
+            select(
+                RecipeReview.recipe_id,
+                func.avg(RecipeReview.rating),
+                func.count(RecipeReview.id),
+            )
+            .where(RecipeReview.recipe_id.in_(recipe_ids))
+            .group_by(RecipeReview.recipe_id)
+        ).all()
+        for rid, avg, cnt in rows:
+            rating_by_recipe[rid] = {
+                "average": float(avg) if avg is not None else None,
+                "count": cnt or 0,
+            }
+
     # Add is_saved flag + nutrition + tags + author info to recipes
     items = []
     for recipe in recipes:
@@ -127,6 +147,8 @@ def list_library_recipes(
             "source": "library" if is_library else "community",
             "author_id": recipe.user_id,
             "author_name": author.name if author and not is_library else None,
+            "rating_average": rating_by_recipe.get(recipe.id, {}).get("average"),
+            "rating_count": rating_by_recipe.get(recipe.id, {}).get("count", 0),
         }
         items.append(recipe_dict)
 
