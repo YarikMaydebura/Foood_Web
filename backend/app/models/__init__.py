@@ -9,6 +9,7 @@ from app.models.shopping_list import ShoppingList
 from app.models.shopping_list_item import ShoppingListItem
 from app.models.user_saved_recipe import UserSavedRecipe
 from app.models.recipe_review import RecipeReview
+from app.models.recipe_comment import RecipeComment
 
 __all__ = [
     "User",
@@ -22,4 +23,5 @@ __all__ = [
     "ShoppingListItem",
     "UserSavedRecipe",
     "RecipeReview",
+    "RecipeComment",
 ]

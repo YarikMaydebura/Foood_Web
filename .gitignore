@@ -34,3 +34,4 @@ __pycache__/
 # Ignore temporary/test files
 nul
 backend/add_recipes.py
+frontend/dist/

@@ -304,6 +304,66 @@ export default function RecipeDetailPage() {
   const [draftComment, setDraftComment] = useState("");
   const [savingReview, setSavingReview] = useState(false);
 
+  // Comments
+  const [comments, setComments] = useState([]);
+  const [newCommentText, setNewCommentText] = useState("");
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyText, setReplyText] = useState("");
+  const [postingComment, setPostingComment] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  const loadComments = async (recipeId) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/recipes/${recipeId}/comments`);
+      if (res.ok) setComments(await res.json());
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const postComment = async (text, parentId = null) => {
+    if (!recipe || !text.trim()) return;
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      navigate('/auth/login');
+      return;
+    }
+    setPostingComment(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/recipes/${recipe.id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ text: text.trim(), parent_id: parentId }),
+      });
+      if (res.ok) {
+        await loadComments(recipe.id);
+        if (parentId) {
+          setReplyingTo(null);
+          setReplyText("");
+        } else {
+          setNewCommentText("");
+        }
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setToast(data.detail || 'Failed to post comment');
+      }
+    } finally {
+      setPostingComment(false);
+    }
+  };
+
+  const deleteComment = async (commentId) => {
+    if (!recipe) return;
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+    if (!window.confirm("Delete this comment?")) return;
+    const res = await fetch(
+      `${API_BASE_URL}/recipes/${recipe.id}/comments/${commentId}`,
+      { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    if (res.ok) await loadComments(recipe.id);
+  };
+
   const loadReviews = async (recipeId) => {
     try {
       const [listRes, summaryRes] = await Promise.all([
@@ -388,13 +448,26 @@ export default function RecipeDetailPage() {
     fetchRecipe();
   }, [slug]);
 
-  // Load reviews whenever the recipe loads.
+  // Load reviews + comments whenever the recipe loads.
   useEffect(() => {
     if (!recipe?.id) return;
     loadReviews(recipe.id);
     loadMyReview(recipe.id);
+    loadComments(recipe.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipe?.id, isAuthenticated]);
+
+  // Fetch current user id once for "your comment" controls.
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (!token) return;
+    fetch(`${API_BASE_URL}/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.user?.id) setCurrentUserId(data.user.id);
+      })
+      .catch(() => {});
+  }, [isAuthenticated]);
 
   // Once we know the recipe id + auth, check if this recipe is already saved.
   useEffect(() => {
@@ -916,6 +989,138 @@ export default function RecipeDetailPage() {
                   </div>
                   {r.comment && (
                     <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{r.comment}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Comments */}
+        <div className="mt-8 bg-white rounded-2xl shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Comments</h2>
+            <span className="text-sm text-gray-500">
+              {comments.length} {comments.length === 1 ? 'thread' : 'threads'}
+            </span>
+          </div>
+
+          {isAuthenticated && (
+            <div className="mb-6">
+              <textarea
+                value={newCommentText}
+                onChange={(e) => setNewCommentText(e.target.value.slice(0, 2000))}
+                rows={3}
+                placeholder="Share a tip, a tweak, or a question..."
+                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+              />
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs text-gray-400">{newCommentText.length}/2000</span>
+                <button
+                  type="button"
+                  onClick={() => postComment(newCommentText)}
+                  disabled={!newCommentText.trim() || postingComment}
+                  className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                    !newCommentText.trim() || postingComment
+                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      : 'bg-orange-500 text-white hover:bg-orange-600'
+                  }`}
+                >
+                  Post comment
+                </button>
+              </div>
+            </div>
+          )}
+
+          {comments.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-6">
+              No comments yet. {isAuthenticated ? "Start the conversation!" : "Sign in to start the conversation."}
+            </p>
+          ) : (
+            <div className="space-y-5">
+              {comments.map((c) => (
+                <div key={c.id} className="border-l-2 border-gray-100 pl-4">
+                  <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
+                    <span className="font-medium text-gray-900 text-sm">{c.author_name || 'User'}</span>
+                    <span className="text-xs text-gray-400">
+                      {new Date(c.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{c.text}</p>
+                  <div className="flex items-center gap-3 mt-2">
+                    {isAuthenticated && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplyingTo(replyingTo === c.id ? null : c.id);
+                          setReplyText("");
+                        }}
+                        className="text-xs font-medium text-orange-600 hover:text-orange-700"
+                      >
+                        {replyingTo === c.id ? 'Cancel' : 'Reply'}
+                      </button>
+                    )}
+                    {currentUserId === c.user_id && (
+                      <button
+                        type="button"
+                        onClick={() => deleteComment(c.id)}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+
+                  {replyingTo === c.id && (
+                    <div className="mt-3 pl-2 border-l-2 border-orange-200">
+                      <textarea
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value.slice(0, 2000))}
+                        rows={2}
+                        placeholder={`Reply to ${c.author_name || 'this comment'}...`}
+                        className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 resize-none"
+                        autoFocus
+                      />
+                      <div className="flex items-center justify-end gap-2 mt-2">
+                        <button
+                          type="button"
+                          onClick={() => postComment(replyText, c.id)}
+                          disabled={!replyText.trim() || postingComment}
+                          className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                            !replyText.trim() || postingComment
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-orange-500 text-white hover:bg-orange-600'
+                          }`}
+                        >
+                          Reply
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {c.replies && c.replies.length > 0 && (
+                    <div className="mt-3 ml-4 space-y-3">
+                      {c.replies.map((r) => (
+                        <div key={r.id} className="border-l-2 border-orange-100 pl-3">
+                          <div className="flex items-center justify-between mb-0.5 flex-wrap gap-1">
+                            <span className="font-medium text-gray-900 text-sm">{r.author_name || 'User'}</span>
+                            <span className="text-xs text-gray-400">
+                              {new Date(r.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{r.text}</p>
+                          {currentUserId === r.user_id && (
+                            <button
+                              type="button"
+                              onClick={() => deleteComment(r.id)}
+                              className="mt-1 text-xs text-red-500 hover:text-red-700"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               ))}
